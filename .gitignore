@@ -1,0 +1,9 @@
+# build
+/modules/
+/node_modules/
+/*.jar
+
+# backup files
+*~
+\#*
+/.ceylon/config.old
