@@ -4,6 +4,10 @@ import ceylon.buffer {
 import ceylon.buffer.base {
     base16String
 }
+import ceylon.collection {
+    LinkedList,
+    Queue
+}
 import ceylon.interop.java {
     javaClass,
     javaClassFromInstance
@@ -14,6 +18,7 @@ import java.lang {
         intType=TYPE
     },
     ObjectArray,
+    Thread,
     Void
 }
 import java.io {
@@ -27,7 +32,18 @@ import java.nio.channels {
     AsynchronousCloseException,
     AsynchronousServerSocketChannel,
     AsynchronousSocketChannel,
-    CompletionHandler
+    CompletionHandler,
+    Selector,
+    SelectionKey {
+        op_accept=OP_ACCEPT,
+        op_read=OP_READ,
+        op_write=OP_WRITE
+    },
+    ServerSocketChannel,
+    SocketChannel
+}
+import java.nio.channels.spi {
+    AbstractInterruptibleChannel
 }
 import java.util.concurrent {
     Executors,
@@ -46,9 +62,9 @@ native ("jvm") JByteBuffer bytebuffer_c2j(ByteBuffer cbuffer) {
     jbuffer.flip();
     return jbuffer;
 }
-native ("jvm") ByteBuffer bytebuffer_j2c(JByteBuffer jbuffer, Integer count) {
-    value cbuffer = ByteBuffer.ofSize(count);
-    for (i in 0:count) {
+native ("jvm") ByteBuffer bytebuffer_j2c(JByteBuffer jbuffer) {
+    value cbuffer = ByteBuffer.ofSize(jbuffer.remaining());
+    while (jbuffer.hasRemaining()) {
         cbuffer.put(jbuffer.get());
     }
     jbuffer.flip();
@@ -59,8 +75,41 @@ native ("jvm") JByteBuffer makeReceiveBuffer() {
     return JByteBuffer.allocate(4096); // TODO what’s a good capacity?
 }
 
+native ("jvm") class Connection(Selector selector, SocketChannel socket) {
+    Queue<JByteBuffer->WriteCallback> writes = LinkedList<JByteBuffer->WriteCallback>();
+    late ReadCallback read;
+
+    shared void doRead() {
+        print("doing read");
+        value jbuffer = makeReceiveBuffer();
+        socket.read(jbuffer);
+        jbuffer.flip();
+        value cbuffer = bytebuffer_j2c(jbuffer);
+        read(cbuffer);
+    }
+    shared void doWrite() {
+        print("doing write");
+        if (exists jbuffer->callback = writes.front) {
+            print("have something to write");
+            socket.write(jbuffer);
+            if (jbuffer.remaining() <= 0) {
+                print("write was full");
+                writes.accept();
+                callback();
+            }
+        }
+    }
+    shared void write(ByteBuffer content, WriteCallback callback) {
+        print("enqueue write job");
+        writes.offer(bytebuffer_c2j(content)->callback);
+    }
+    shared void setReadCallback(ReadCallback read) {
+        this.read = read;
+    }
+}
+
 shared alias ReadCallback => Anything(ByteBuffer);
-shared alias WriteCallback => Anything(Integer);
+shared alias WriteCallback => Anything();
 
 native shared void start(ReadCallback? instance(void write(ByteBuffer content, WriteCallback callback), void close()));
 
@@ -72,81 +121,81 @@ native ("jvm") shared void start(ReadCallback? instance(void write(ByteBuffer co
     print("got accessible constructor");
     value fd = ctr.newInstance(JInteger(3));
     print("got fd");
+    
+    value server = ServerSocketChannel.open();
+    print("got server socket channel");
 
-    value group = AsynchronousChannelGroup.withThreadPool(Executors.newFixedThreadPool(2)); // single thread won’t work because we need to accept and call read handler concurrently
-    value channel = AsynchronousServerSocketChannel.open(group);
-    channel.bind(InetSocketAddress(0), 1);
-    channel.close();
-    print("got socket");
+    value address = InetSocketAddress(0);
+    value localAddressField = javaClassFromInstance(server).getDeclaredField("localAddress");
+    localAddressField.setAccessible(ObjectArray(1, localAddressField), true);
+    localAddressField.set(server, address);
+    print("bound server socket channel");
 
-    value openField = javaClassFromInstance(channel).superclass.getDeclaredField("open");
+    print(javaClassFromInstance(server));
+    value openField = javaClass<AbstractInterruptibleChannel>().getDeclaredField("open");
     openField.setAccessible(ObjectArray(1, openField), true);
-    openField.set(channel, JBoolean(true));
-    print("un-closed socket");
+    openField.set(server, JBoolean(true));
+    print("un-closed server socket channel");
 
-    value fdField = javaClassFromInstance(channel).superclass.getDeclaredField("fd");
+    value fdField = javaClassFromInstance(server).getDeclaredField("fd");
     fdField.setAccessible(ObjectArray(1, fdField), true);
-    fdField.set(channel, fd);
+    fdField.set(server, fd);
+    value fdValField = javaClassFromInstance(server).getDeclaredField("fdVal");
+    fdValField.setAccessible(ObjectArray(1, fdValField), true);
+    fdValField.set(server, JInteger(3));
     print("injected fd");
 
-    channel.accept(null, object satisfies CompletionHandler<AsynchronousSocketChannel, Void> {
-            shared actual void completed(AsynchronousSocketChannel result, Void attachment) {
-                print("got connection");
-                value read = instance {
-                    void write(ByteBuffer content, WriteCallback callback) {
-                        print("writing");
-                        result.write(bytebuffer_c2j(content), null, object satisfies CompletionHandler<JInteger, Void> {
-                                shared actual void completed(JInteger bytesWritten, Void attachment) {
-                                    print("wrote ``bytesWritten.intValue()`` bytes");
-                                    callback(bytesWritten.intValue());
-                                }
-                                shared actual void failed(Throwable exc, Void attachment) {
-                                    exc.printStackTrace();
-                                }
-                            });
-                    }
-                    void close() {
-                        print("closing");
-                        result.close();
-                    }
-                };
-                if (exists read) {
-                    variable JByteBuffer buffer = makeReceiveBuffer();
-                    result.read(buffer, null, object satisfies CompletionHandler<JInteger, Void> {
-                            shared actual void completed(JInteger bytesRead_j, Void attachment) {
-                                value bytesRead = bytesRead_j.intValue();
-                                if (bytesRead >= 0) {
-                                    print("read ``bytesRead`` bytes");
-                                    value current = buffer;
-                                    current.flip();
-                                    buffer = makeReceiveBuffer();
-                                    result.read(buffer, null, this);
-                                    read(bytebuffer_j2c(current, bytesRead));
-                                } else {
-                                    print("eof");
-                                }
+    server.configureBlocking(false);
+    print("made server non-blocking");
+
+    value selector = Selector.open();
+    print("got selector");
+    server.register(selector, op_accept);
+    print("registered selector");
+
+    object extends Thread() {
+        shared actual void run() {
+            print("thread started");
+            while (true) {
+                if (selector.select() > 0) {
+                    value selectedKeys = selector.selectedKeys();
+                    for (selectedKey in selectedKeys) {
+                        if (selectedKey.acceptable) {
+                            print("server acceptable");
+                            value socket = server.accept();
+                            socket.configureBlocking(false);
+                            value connection = Connection(selector, socket);
+                            socket.register(selector, op_read.or(op_write), connection);
+                            value readCallback = instance {
+                                write = connection.write;
+                                close = socket.close;
+                            };
+                            if (exists readCallback) {
+                                connection.setReadCallback(readCallback);
+                            } else {
+                                server.close();
                             }
-                            shared actual void failed (Throwable exc, Void attachment) {
-                                if (exc is AsynchronousCloseException) {
-                                    // ignore
-                                    print("read failed due to close");
-                                } else {
-                                    print("read failed for some other reason:");
-                                    exc.printStackTrace();
-                                }
+                        } else {
+                            assert (is Connection connection = selectedKey.attachment());
+                            print("ready to read or write");
+                            if (selectedKey.readable) {
+                                connection.doRead();
                             }
-                        });
-                    print("registered read completion handler");
-                    channel.accept(null, this); // get ready to accept next connection
-                    print("re-registered socket completion handler on server");
+                            if (selectedKey.writable) {
+                                connection.doWrite();
+                            }
+                        }
+                    }
+                    selectedKeys.clear();
+                } else {
+                    print("done");
+                    break;
                 }
             }
-            shared actual void failed(Throwable exc, Void attachment) {
-                exc.printStackTrace();
-            }
-        });
-    print("called accept");
-    group.awaitTermination(runtime.maxIntegerValue, seconds);
+        }
+    }.start();
+    print("launched thread");
+
 }
 
 dynamic Socket {
@@ -176,10 +225,9 @@ native ("js") shared void start(ReadCallback? instance(void write(ByteBuffer con
             print("registered socket error handler");
             value read = instance {
                 void write(ByteBuffer content, WriteCallback callback) {
-                    value length = content.available;
                     String hex = base16String.encode(content);
                     print("write hex: ``hex``");
-                    socket.write(hex, "hex", () => callback(length)); // Node buffers in userspace to ensure every write is complete
+                    socket.write(hex, "hex", () => callback());
                     print("wrote hex");
                 }
                 void close() {
