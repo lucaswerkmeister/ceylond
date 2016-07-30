@@ -133,16 +133,16 @@ shared alias WriteCallback => Anything();
  it receives a function that can be used to write to the socket, and a function to close it.
  It returns a function that is called whenever there is new data on the socket,
  or [[null]] to signal that the socket should stop listening."
-native shared void start(ReadCallback? instance(void write(ByteBuffer content, WriteCallback callback), void close()));
+native shared void start(ReadCallback? instance(void write(ByteBuffer content, WriteCallback callback), void close()), Integer fd = 3, Boolean concurrent = true);
 
-native ("jvm") shared void start(ReadCallback? instance(void write(ByteBuffer content, WriteCallback callback), void close())) {
+native ("jvm") shared void start(ReadCallback? instance(void write(ByteBuffer content, WriteCallback callback), void close()), Integer fd = 3, Boolean concurrent = true) {
 
     print("starting");
-    value ctr = javaClass<FileDescriptor>().getDeclaredConstructor(intType);
-    ctr.setAccessible(ObjectArray(1, ctr), true);
+    value fileDescriptorConstructor = javaClass<FileDescriptor>().getDeclaredConstructor(intType);
+    fileDescriptorConstructor.setAccessible(ObjectArray(1, fileDescriptorConstructor), true);
     print("got accessible constructor");
-    value fd = ctr.newInstance(JInteger(3));
-    print("got fd");
+    value fileDescriptor = fileDescriptorConstructor.newInstance(JInteger(fd));
+    print("got fileDescriptor");
     
     value server = ServerSocketChannel.open();
     print("got server socket channel");
@@ -161,10 +161,10 @@ native ("jvm") shared void start(ReadCallback? instance(void write(ByteBuffer co
 
     value fdField = javaClassFromInstance(server).getDeclaredField("fd");
     fdField.setAccessible(ObjectArray(1, fdField), true);
-    fdField.set(server, fd);
+    fdField.set(server, fileDescriptor);
     value fdValField = javaClassFromInstance(server).getDeclaredField("fdVal");
     fdValField.setAccessible(ObjectArray(1, fdValField), true);
-    fdValField.set(server, JInteger(3));
+    fdValField.set(server, JInteger(fd));
     print("injected fd");
 
     server.configureBlocking(false);
@@ -179,6 +179,7 @@ native ("jvm") shared void start(ReadCallback? instance(void write(ByteBuffer co
         shared actual void run() {
             print("thread started");
             while (true) {
+                // TODO concurrent; error handling (what if the other side closes the socket?)
                 if (selector.select() > 0) {
                     value selectedKeys = selector.selectedKeys();
                     for (selectedKey in selectedKeys) {
@@ -231,7 +232,7 @@ dynamic NodeBuffer {
     shared formal String toString(String encoding);
 }
 
-native ("js") shared void start(ReadCallback? instance(void write(ByteBuffer content, WriteCallback callback), void close())) {
+native ("js") shared void start(ReadCallback? instance(void write(ByteBuffer content, WriteCallback callback), void close()), Integer fd = 3, Boolean concurrent = true) {
     print("starting up");
     try {
         Boolean startInstance(Socket socket) {
@@ -291,7 +292,7 @@ native ("js") shared void start(ReadCallback? instance(void write(ByteBuffer con
                     console.log(error);
                 });
             print("registered server error handler");
-            server.listen(dynamic [fd = 3;]);
+            server.listen(dynamic [fd = fd;]);
         }
         print("started without crash");
     } catch (Throwable t) {
