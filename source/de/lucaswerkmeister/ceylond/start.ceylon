@@ -75,10 +75,16 @@ native ("jvm") JByteBuffer makeReceiveBuffer() {
     return JByteBuffer.allocate(4096); // TODO what’s a good capacity?
 }
 
+"A handler for a single connection.
+ After instantiating it, register the [[selector]] on the [[socket]] with this as the attachment."
 native ("jvm") class Connection(Selector selector, SocketChannel socket) {
+    "Queue of pending write jobs.
+     The position of the byte buffer determines how much of the write is still left to do."
     Queue<JByteBuffer->WriteCallback> writes = LinkedList<JByteBuffer->WriteCallback>();
     late ReadCallback read;
 
+    "Read data from the socket and pass it to the [[read]] callback.
+     Call this method when the socket has been signalled to be ready for reading."
     shared void doRead() {
         print("doing read");
         value jbuffer = makeReceiveBuffer();
@@ -87,6 +93,8 @@ native ("jvm") class Connection(Selector selector, SocketChannel socket) {
         value cbuffer = bytebuffer_j2c(jbuffer);
         read(cbuffer);
     }
+    "Take a queued write (if there is one) and write it to the socket.
+     Call this method when the socket has been signalled to be ready for writing."
     shared void doWrite() {
         print("doing write");
         if (exists jbuffer->callback = writes.front) {
@@ -99,6 +107,10 @@ native ("jvm") class Connection(Selector selector, SocketChannel socket) {
             }
         }
     }
+    "Enqueue a write job.
+     The [[content]] will be written as soon as the socket is ready for writing
+     and all prior read jobs are completed,
+     and the [[callback]] will be called once the write is complete."
     shared void write(ByteBuffer content, WriteCallback callback) {
         print("enqueue write job");
         writes.offer(bytebuffer_c2j(content)->callback);
@@ -108,9 +120,19 @@ native ("jvm") class Connection(Selector selector, SocketChannel socket) {
     }
 }
 
+"A read callback, to be called with a ready-to-read [[ByteBuffer]] when data has been read from the socket."
 shared alias ReadCallback => Anything(ByteBuffer);
+"A write callback, to be called once a write is fully completed.
+ (There is no count of bytes written;
+ this library (on JS: Node itself) takes care of repeating writes until they’re completely done.)"
 shared alias WriteCallback => Anything();
 
+"Start listening on the socket.
+ 
+ The [[instance]] function is called whenever a new connection to the socket is opened;
+ it receives a function that can be used to write to the socket, and a function to close it.
+ It returns a function that is called whenever there is new data on the socket,
+ or [[null]] to signal that the socket should stop listening."
 native shared void start(ReadCallback? instance(void write(ByteBuffer content, WriteCallback callback), void close()));
 
 native ("jvm") shared void start(ReadCallback? instance(void write(ByteBuffer content, WriteCallback callback), void close())) {
