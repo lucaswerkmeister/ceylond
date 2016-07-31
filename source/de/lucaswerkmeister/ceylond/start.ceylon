@@ -4,6 +4,10 @@ import ceylon.buffer {
 import ceylon.buffer.base {
     base16String
 }
+import ceylon.logging {
+    Logger,
+    logger
+}
 import ceylon.collection {
     LinkedList,
     Queue
@@ -53,6 +57,8 @@ import java.net {
     InetSocketAddress
 }
 
+Logger log = logger(`module`);
+
 native ("jvm") JByteBuffer bytebuffer_c2j(ByteBuffer cbuffer) {
     value jbuffer = JByteBuffer.allocate(cbuffer.available);
     while (cbuffer.hasAvailable) {
@@ -86,7 +92,7 @@ native ("jvm") class Connection(Selector selector, SocketChannel socket) {
     "Read data from the socket and pass it to the [[read]] callback.
      Call this method when the socket has been signalled to be ready for reading."
     shared void doRead() {
-        print("doing read");
+        log.trace("doing read");
         value jbuffer = makeReceiveBuffer();
         socket.read(jbuffer);
         jbuffer.flip();
@@ -96,12 +102,12 @@ native ("jvm") class Connection(Selector selector, SocketChannel socket) {
     "Take a queued write (if there is one) and write it to the socket.
      Call this method when the socket has been signalled to be ready for writing."
     shared void doWrite() {
-        print("doing write");
+        log.trace("doing write");
         if (exists jbuffer->callback = writes.front) {
-            print("have something to write");
+            log.trace("have something to write");
             socket.write(jbuffer);
             if (jbuffer.remaining() <= 0) {
-                print("write was full");
+                log.trace("write was full");
                 writes.accept();
                 callback();
             }
@@ -112,7 +118,7 @@ native ("jvm") class Connection(Selector selector, SocketChannel socket) {
      and all prior read jobs are completed,
      and the [[callback]] will be called once the write is complete."
     shared void write(ByteBuffer content, WriteCallback callback) {
-        print("enqueue write job");
+        log.trace("enqueue write job");
         writes.offer(bytebuffer_c2j(content)->callback);
     }
     shared void setReadCallback(ReadCallback read) {
@@ -137,27 +143,26 @@ native shared void start(ReadCallback? instance(void write(ByteBuffer content, W
 
 native ("jvm") shared void start(ReadCallback? instance(void write(ByteBuffer content, WriteCallback callback), void close()), Integer fd = 3, Boolean concurrent = true) {
 
-    print("starting");
+    log.trace("starting");
     value fileDescriptorConstructor = javaClass<FileDescriptor>().getDeclaredConstructor(intType);
     fileDescriptorConstructor.setAccessible(ObjectArray(1, fileDescriptorConstructor), true);
-    print("got accessible constructor");
+    log.trace("got accessible constructor");
     value fileDescriptor = fileDescriptorConstructor.newInstance(JInteger(fd));
-    print("got fileDescriptor");
+    log.trace("got fileDescriptor");
     
     value server = ServerSocketChannel.open();
-    print("got server socket channel");
+    log.trace("got server socket channel");
 
     value address = InetSocketAddress(0);
     value localAddressField = javaClassFromInstance(server).getDeclaredField("localAddress");
     localAddressField.setAccessible(ObjectArray(1, localAddressField), true);
     localAddressField.set(server, address);
-    print("bound server socket channel");
+    log.trace("bound server socket channel");
 
-    print(javaClassFromInstance(server));
     value openField = javaClass<AbstractInterruptibleChannel>().getDeclaredField("open");
     openField.setAccessible(ObjectArray(1, openField), true);
     openField.set(server, JBoolean(true));
-    print("un-closed server socket channel");
+    log.trace("un-closed server socket channel");
 
     value fdField = javaClassFromInstance(server).getDeclaredField("fd");
     fdField.setAccessible(ObjectArray(1, fdField), true);
@@ -165,26 +170,26 @@ native ("jvm") shared void start(ReadCallback? instance(void write(ByteBuffer co
     value fdValField = javaClassFromInstance(server).getDeclaredField("fdVal");
     fdValField.setAccessible(ObjectArray(1, fdValField), true);
     fdValField.set(server, JInteger(fd));
-    print("injected fd");
+    log.trace("injected fd");
 
     server.configureBlocking(false);
-    print("made server non-blocking");
+    log.trace("made server non-blocking");
 
     value selector = Selector.open();
-    print("got selector");
+    log.trace("got selector");
     server.register(selector, op_accept);
-    print("registered selector");
+    log.trace("registered selector");
 
     object extends Thread() {
         shared actual void run() {
-            print("thread started");
+            log.trace("thread started");
             while (true) {
                 // TODO concurrent; error handling (what if the other side closes the socket?)
                 if (selector.select() > 0) {
                     value selectedKeys = selector.selectedKeys();
                     for (selectedKey in selectedKeys) {
                         if (selectedKey.acceptable) {
-                            print("server acceptable");
+                            log.trace("server acceptable");
                             value socket = server.accept();
                             socket.configureBlocking(false);
                             value connection = Connection(selector, socket);
@@ -200,7 +205,7 @@ native ("jvm") shared void start(ReadCallback? instance(void write(ByteBuffer co
                             }
                         } else {
                             assert (is Connection connection = selectedKey.attachment());
-                            print("ready to read or write");
+                            log.trace("ready to read or write");
                             if (selectedKey.readable) {
                                 connection.doRead();
                             }
@@ -211,19 +216,19 @@ native ("jvm") shared void start(ReadCallback? instance(void write(ByteBuffer co
                     }
                     selectedKeys.clear();
                 } else {
-                    print("done");
+                    log.trace("done");
                     break;
                 }
             }
         }
     }.start();
-    print("launched thread");
+    log.trace("launched thread");
 
 }
 
 dynamic Socket {
     shared formal void setEncoding(String encoding);
-    shared formal void on(String event, void callback(NodeBuffer buffer));
+    shared formal void on(String event, Anything(Nothing) callback);
     shared formal void write(String data, String encoding, void callback());
     shared formal void end();
 }
@@ -233,70 +238,60 @@ dynamic NodeBuffer {
 }
 
 native ("js") shared void start(ReadCallback? instance(void write(ByteBuffer content, WriteCallback callback), void close()), Integer fd = 3, Boolean concurrent = true) {
-    print("starting up");
+    log.trace("starting up");
     try {
         Boolean startInstance(Socket socket) {
-            print("starting instance");
+            log.trace("starting instance");
             socket.setEncoding("hex");
-            socket.on {
-                event = "error";
-                void callback(NodeBuffer error) {
-                    print("there was a socket error!");
-                    dynamic { console.log(error); }
-                }
-            };
-            print("registered socket error handler");
+            socket.on("error", (Throwable error) {
+                    log.error("socket error", error);
+                });
+            log.trace("registered socket error handler");
             value read = instance {
                 void write(ByteBuffer content, WriteCallback callback) {
                     String hex = base16String.encode(content);
-                    print("write hex: ``hex``");
+                    log.trace("write hex");
                     socket.write(hex, "hex", () => callback());
-                    print("wrote hex");
+                    log.trace("wrote hex");
                 }
                 void close() {
-                    print("end socket");
+                    log.trace("end socket");
                     socket.end();
                 }
             };
             if (exists read) {
-                print("have an instance");
-                socket.on {
-                    event = "data";
-                    void callback(NodeBuffer buffer) {
-                        print("read something");
+                log.trace("have an instance");
+                socket.on("data", (NodeBuffer buffer) {
+                        log.trace("read something");
                         String hex = buffer.toString("hex");
-                        print("read hex: ``hex``");
                         read(base16String.decodeBuffer(hex));
-                    }
-                };
-                print("registered read handler");
+                    });
+                log.trace("registered read handler");
                 return true;
             } else {
-                print("don’t have an instance");
+                log.trace("don’t have an instance");
                 return false;
             }
         }
-        print("creating server");
+        log.trace("creating server");
         dynamic {
             dynamic server = net.createServer();
             server.on("connection", (Socket socket) {
                     Boolean keepListening = startInstance(socket);
                     if (!keepListening) {
-                        print("close server");
+                        log.trace("close server");
                         server.close();
                     }
                 });
-            print("registered server connection handler");
+            log.trace("registered server connection handler");
             server.on("error", (dynamic error) {
-                    print("there was a server error!");
-                    console.log(error);
+                    log.error("server error", error);
                 });
-            print("registered server error handler");
+            log.trace("registered server error handler");
             server.listen(dynamic [fd = fd;]);
         }
-        print("started without crash");
+        log.trace("started without crash");
     } catch (Throwable t) {
-        print("there was an outer error");
-        t.printStackTrace();
+        log.error("error creating or starting server", t);
     }
 }
