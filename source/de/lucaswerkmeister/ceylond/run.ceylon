@@ -15,12 +15,12 @@ shared void run() {
     addLogWriter(writeSimpleLog);
     defaultPriority = trace;
     start {
-        ReadCallback? instance(void write(ByteBuffer content, WriteCallback callback), void close()) {
+        [ReadCallback, SocketExceptionHandler]? instance(void write(ByteBuffer content, WriteCallback callback), void close()) {
             log.trace("started instance");
             write(utf8.encodeBuffer("Hello, World! Please supply your name.\n"), () { log.trace("first write done"); });
             variable Boolean haveName = false;
             log.trace("don’t have a name yet");
-            return (ByteBuffer content) {
+            void read(ByteBuffer content) {
                 log.trace("application read something");
                 if (haveName) {
                     log.trace("application read a second transmission");
@@ -30,7 +30,8 @@ shared void run() {
                     haveName = true;
                     write(utf8.encodeBuffer("Greetings, ``name``!\n"), () { log.trace("second write done, closing"); close(); });
                 }
-            };
+            }
+            return [read, logAndAbort(`module`)];
         }
     };
 }
