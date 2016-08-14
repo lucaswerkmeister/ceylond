@@ -255,7 +255,7 @@ native ("jvm") shared void start([ReadCallback, SocketExceptionHandler]? instanc
         }.start();
         log.trace("launched thread");
     } catch (Throwable t) {
-        if (handler(UnknownServerException("unknown error during server setup", t))) {
+        if (handler(UnknownServerException(t))) {
             log.warn("server exception handler requests continue but server cannot continue");
         }
     }
@@ -273,15 +273,12 @@ dynamic NodeBuffer {
 }
 
 native ("js") shared void start([ReadCallback, SocketExceptionHandler]? instance(void write(ByteBuffer content, WriteCallback callback), void close()), ServerExceptionHandler handler = logAndAbort(), Integer fd = 3, Boolean concurrent = true) {
+    // TODO concurrent
     log.trace("starting up");
     try {
         Boolean startInstance(Socket socket) {
             log.trace("starting instance");
             socket.setEncoding("hex");
-            socket.on("error", (Throwable error) {
-                    log.error("socket error", error);
-                });
-            log.trace("registered socket error handler");
             variable SocketExceptionHandler? handler = null;
             value inst = instance {
                 void write(ByteBuffer content, WriteCallback callback) {
@@ -292,8 +289,10 @@ native ("js") shared void start([ReadCallback, SocketExceptionHandler]? instance
                                 callback();
                             } catch (Throwable t) {
                                 assert (exists h = handler);
-                                h(WriteCallbackException(t));
-                                // TODO handler return value
+                                value proceed = h(WriteCallbackException(t));
+                                if (!proceed) {
+                                    socket.end();
+                                }
                             }
                         });
                     log.trace("wrote hex");
@@ -313,11 +312,26 @@ native ("js") shared void start([ReadCallback, SocketExceptionHandler]? instance
                         try {
                             read(cbuffer);
                         } catch (Throwable t) {
-                            error(ReadCallbackException(t));
-                            // TODO handler return value
+                            value proceed = error(ReadCallbackException(t));
+                            if (!proceed) {
+                                socket.end();
+                            }
                         }
                     });
                 log.trace("registered read handler");
+                socket.on("error", (Throwable e) {
+                        SocketException exc;
+                        if (e.message == "write EPIPE") {
+                            exc = SocketClosedException();
+                        } else {
+                            exc = UnknownSocketException(e);
+                        }
+                        value proceed = error(exc);
+                        if (!proceed) {
+                            socket.end();
+                        }
+                    });
+                log.trace("registered socket error handler");
                 return true;
             } else {
                 log.trace("don’t have an instance");
@@ -328,22 +342,32 @@ native ("js") shared void start([ReadCallback, SocketExceptionHandler]? instance
         dynamic {
             dynamic server = net.createServer();
             server.on("connection", (Socket socket) {
-                    Boolean keepListening = startInstance(socket);
-                    if (!keepListening) {
-                        log.trace("close server");
-                        server.close();
+                    try {
+                        Boolean keepListening = startInstance(socket);
+                        if (!keepListening) {
+                            log.trace("close server");
+                            server.close();
+                        }
+                    } catch (Throwable t) {
+                        value proceed = handler(SocketSetupException(t));
+                        if (!proceed) {
+                            server.close();
+                        }
                     }
                 });
             log.trace("registered server connection handler");
             server.on("error", (dynamic error) {
-                    log.error("server error", error);
+                    value proceed = handler(UnknownServerException(error));
+                    if (!proceed) {
+                        server.close();
+                    }
                 });
             log.trace("registered server error handler");
             server.listen(dynamic [fd = fd;]);
         }
         log.trace("started without crash");
     } catch (Throwable t) {
-        if (handler(UnknownServerException("unknown error during server setup", t))) {
+        if (handler(ServerSetupException(t))) {
             log.warn("server exception handler requests continue but server cannot continue");
         }
     }
