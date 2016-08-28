@@ -203,14 +203,55 @@ shared alias SocketExceptionHandler => Boolean(SocketException);
 
 "Start listening on the socket.
  
- The [[instance]] function is called whenever a new connection to the socket is opened;
- it receives a function that can be used to write to the socket, and a function to close it.
- It returns two functions, one that is called whenever there is new data on the socket
- and one that handles exceptions on this socket,
- or [[null]] to signal that the socket should stop listening."
-native shared void start([ReadCallback, SocketExceptionHandler]? instance(void write(ByteBuffer content, WriteCallback callback), void close()), ServerExceptionHandler handler = logAndAbort(), Integer fd = 3, Boolean concurrent = true);
+ **VERY IMPORTANT NOTE:** You **must** return from the main program (`run`) after calling this function;
+ on Node.js, the socket will not receive any data until control flow has returned to the main event loop.
+ (On the JVM, the socket is handled in a separate thread, but you should return from the main program nonetheless.)
+ You may call [[start]] multiple times with different [[file descriptors|fd]] to listen on multiple sockets,
+ and you may also log messages or do other stuff after calling [[start]],
+ but you must not enter any long-running activities or even an infinite loop,
+ otherwise the sockets won’t work."
+native shared void start(
+    "This function is called whenever a new connection to the socket is opened;
+     it receives a function that can be used to write to the socket, and a function to close it.
+     It returns two functions, one that is called whenever there is new data on the socket
+     and one that handles exceptions on this socket,
+     or [[null]] to signal that the socket should stop listening."
+    see (`alias SocketExceptionHandler`)
+    [ReadCallback, SocketExceptionHandler]? instance(void write(ByteBuffer content, WriteCallback callback), void close()),
+    see (`alias ServerExceptionHandler`)
+    ServerExceptionHandler handler = logAndAbort(),
+    "The file descriptor to listen on.
+     
+     For inetd and derivatives (e. g. xinetd), this should be 0.
+     systemd by default assigns the first socket to file descriptor 3,
+     but also supports multiple sockets, which it assigns to subsequent file descriptors (4, 5, …).
+     
+     The JVM only supports file descriptor 0 natively;
+     if another file descriptor is specified,
+     a channel object for it is obtained via reflection,
+     in a manner that probably only works on OpenJDK.
+     Node.js allows listening on any file descriptor natively.
+     
+     If you want to run your program on any JVM,
+     or your program uses only a single socket,
+     you should set the file descriptor to 0;
+     if using systemd, add `StandardInput=socket` to the service file
+     to ensure the socket is assigned to file descriptor 0 instead of 3.
+     
+     If you want to run your program on Node.js,
+     or you need multiple sockets,
+     or you don’t need portability across various JVMs and want to keep your systemd service file simple,
+     then use file descriptors 3 & seq."
+    Integer fd = 0,
+    "Whether to allow concurrent connections or not.
+     
+     If [[true]], every connection is accepted as soon as possible.
+     If [[false]], a new connection is only accepted once the previous one has terminated;
+     this is useful if your program changes some global state,
+     and multiple instances running concurrently may disturb each other."
+    Boolean concurrent = true);
 
-native ("jvm") shared void start([ReadCallback, SocketExceptionHandler]? instance(void write(ByteBuffer content, WriteCallback callback), void close()), ServerExceptionHandler handler = logAndAbort(), Integer fd = 3, Boolean concurrent = true) {
+native ("jvm") shared void start([ReadCallback, SocketExceptionHandler]? instance(void write(ByteBuffer content, WriteCallback callback), void close()), ServerExceptionHandler handler = logAndAbort(), Integer fd = 0, Boolean concurrent = true) {
     try {
         ServerSocketChannel server;
         if (fd == 0) {
@@ -291,7 +332,7 @@ dynamic NodeBuffer {
     shared formal String toString(String encoding);
 }
 
-native ("js") shared void start([ReadCallback, SocketExceptionHandler]? instance(void write(ByteBuffer content, WriteCallback callback), void close()), ServerExceptionHandler handler = logAndAbort(), Integer fd = 3, Boolean concurrent = true) {
+native ("js") shared void start([ReadCallback, SocketExceptionHandler]? instance(void write(ByteBuffer content, WriteCallback callback), void close()), ServerExceptionHandler handler = logAndAbort(), Integer fd = 0, Boolean concurrent = true) {
     // TODO concurrent
     log.trace("starting up");
     try {
