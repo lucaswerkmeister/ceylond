@@ -22,6 +22,7 @@ import java.lang {
         intType=TYPE
     },
     ObjectArray,
+    System { inheritedChannel },
     Thread,
     Void
 }
@@ -140,6 +141,44 @@ native ("jvm") class Connection(Selector selector, SocketChannel socket) {
     }
 }
 
+"Make a [[ServerSocketChannel]] for the specified file descriptor using JVM implementation-specific reflection hackery.
+ 
+ The current implementation works on OpenJDK, but probably not on Oracle JDK.
+ If there’s enough demand, an Oracle version might be added in the future.
+ The same goes for other JVM implementations."
+native ("jvm") ServerSocketChannel makeChannel(Integer fd) {
+    log.trace("making server socket channel");
+    value fileDescriptorConstructor = javaClass<FileDescriptor>().getDeclaredConstructor(intType);
+    fileDescriptorConstructor.setAccessible(ObjectArray(1, fileDescriptorConstructor), true);
+    log.trace("got accessible constructor");
+    value fileDescriptor = fileDescriptorConstructor.newInstance(JInteger(fd));
+    log.trace("got fileDescriptor");
+    
+    value server = ServerSocketChannel.open();
+    log.trace("got server socket channel");
+    
+    value address = InetSocketAddress(0);
+    value localAddressField = javaClassFromInstance(server).getDeclaredField("localAddress");
+    localAddressField.setAccessible(ObjectArray(1, localAddressField), true);
+    localAddressField.set(server, address);
+    log.trace("bound server socket channel");
+    
+    value openField = javaClass<AbstractInterruptibleChannel>().getDeclaredField("open");
+    openField.setAccessible(ObjectArray(1, openField), true);
+    openField.set(server, JBoolean(true));
+    log.trace("un-closed server socket channel");
+    
+    value fdField = javaClassFromInstance(server).getDeclaredField("fd");
+    fdField.setAccessible(ObjectArray(1, fdField), true);
+    fdField.set(server, fileDescriptor);
+    value fdValField = javaClassFromInstance(server).getDeclaredField("fdVal");
+    fdValField.setAccessible(ObjectArray(1, fdValField), true);
+    fdValField.set(server, JInteger(fd));
+    log.trace("injected fd");
+    
+    return server;
+}
+
 "A read callback, to be called with a ready-to-read [[ByteBuffer]] when data has been read from the socket."
 shared alias ReadCallback => Anything(ByteBuffer);
 "A write callback, to be called once a write is fully completed.
@@ -173,34 +212,14 @@ native shared void start([ReadCallback, SocketExceptionHandler]? instance(void w
 
 native ("jvm") shared void start([ReadCallback, SocketExceptionHandler]? instance(void write(ByteBuffer content, WriteCallback callback), void close()), ServerExceptionHandler handler = logAndAbort(), Integer fd = 3, Boolean concurrent = true) {
     try {
-        log.trace("starting");
-        value fileDescriptorConstructor = javaClass<FileDescriptor>().getDeclaredConstructor(intType);
-        fileDescriptorConstructor.setAccessible(ObjectArray(1, fileDescriptorConstructor), true);
-        log.trace("got accessible constructor");
-        value fileDescriptor = fileDescriptorConstructor.newInstance(JInteger(fd));
-        log.trace("got fileDescriptor");
-        
-        value server = ServerSocketChannel.open();
-        log.trace("got server socket channel");
-
-        value address = InetSocketAddress(0);
-        value localAddressField = javaClassFromInstance(server).getDeclaredField("localAddress");
-        localAddressField.setAccessible(ObjectArray(1, localAddressField), true);
-        localAddressField.set(server, address);
-        log.trace("bound server socket channel");
-
-        value openField = javaClass<AbstractInterruptibleChannel>().getDeclaredField("open");
-        openField.setAccessible(ObjectArray(1, openField), true);
-        openField.set(server, JBoolean(true));
-        log.trace("un-closed server socket channel");
-
-        value fdField = javaClassFromInstance(server).getDeclaredField("fd");
-        fdField.setAccessible(ObjectArray(1, fdField), true);
-        fdField.set(server, fileDescriptor);
-        value fdValField = javaClassFromInstance(server).getDeclaredField("fdVal");
-        fdValField.setAccessible(ObjectArray(1, fdValField), true);
-        fdValField.set(server, JInteger(fd));
-        log.trace("injected fd");
+        ServerSocketChannel server;
+        if (fd == 0) {
+            assert (is ServerSocketChannel ic = inheritedChannel());
+            server = ic;
+            log.trace("got inherited channel");
+        } else {
+            server = makeChannel(fd);
+        }
 
         server.configureBlocking(false);
         log.trace("made server non-blocking");
