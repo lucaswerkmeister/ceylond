@@ -218,8 +218,6 @@ native shared void start(
      or [[null]] to signal that the socket should stop listening."
     see (`alias SocketExceptionHandler`)
     [ReadCallback, SocketExceptionHandler]? instance(void write(ByteBuffer content, WriteCallback callback), void close()),
-    see (`alias ServerExceptionHandler`)
-    ServerExceptionHandler handler = logAndAbort(),
     "The file descriptor to listen on.
      
      For inetd and derivatives (e. g. xinetd), this should be 0.
@@ -230,19 +228,25 @@ native shared void start(
      if another file descriptor is specified,
      a channel object for it is obtained via reflection,
      in a manner that probably only works on OpenJDK.
-     Node.js allows listening on any file descriptor natively.
      
-     If you want to run your program on any JVM,
-     or your program uses only a single socket,
-     you should set the file descriptor to 0;
-     if using systemd, add `StandardInput=socket` to the service file
-     to ensure the socket is assigned to file descriptor 0 instead of 3.
+     Node.js allows listening on any file descriptor natively,
+     *except* file descriptor 0, where it fails with inexplicable errors without any useful stack trace.
      
-     If you want to run your program on Node.js,
-     or you need multiple sockets,
-     or you don’t need portability across various JVMs and want to keep your systemd service file simple,
-     then use file descriptors 3 & seq."
-    Integer fd = 0,
+     Thus, the choice of file descriptor to listen on depends on several factors:
+     
+     - If your program uses multiple sockets,
+       use file descriptors 3 & seq.,
+       and accept that the program might not run on some JVM implementations.
+     - If your program only needs to run on the JVM, use file descriptor 0,
+       and add `StandardInput=socket` to your systemd service file.
+     - If your program only needs to run on JS, use file descriptor 3.
+     - If your program needs to run on both backends,
+       and you don’t want to make the choice of file descriptor backend-specific,
+       use file descriptor 3,
+       and accept that the program might not run on some JVM implementations."
+    Integer fd,
+    see (`alias ServerExceptionHandler`)
+    ServerExceptionHandler handler = logAndAbort(),
     "Whether to allow concurrent connections or not.
      
      If [[true]], every connection is accepted as soon as possible.
@@ -251,15 +255,17 @@ native shared void start(
      and multiple instances running concurrently may disturb each other."
     Boolean concurrent = true);
 
-native ("jvm") shared void start([ReadCallback, SocketExceptionHandler]? instance(void write(ByteBuffer content, WriteCallback callback), void close()), ServerExceptionHandler handler = logAndAbort(), Integer fd = 0, Boolean concurrent = true) {
+native ("jvm") shared void start([ReadCallback, SocketExceptionHandler]? instance(void write(ByteBuffer content, WriteCallback callback), void close()), Integer fd, ServerExceptionHandler handler = logAndAbort(), Boolean concurrent = true) {
     try {
         ServerSocketChannel server;
         if (fd == 0) {
             assert (is ServerSocketChannel ic = inheritedChannel());
             server = ic;
             log.trace("got inherited channel");
-        } else {
+        } else if (fd >= 3) {
             server = makeChannel(fd);
+        } else {
+            throw FileDescriptorInvalidException("0 or >= 3", fd);
         }
 
         server.configureBlocking(false);
@@ -315,7 +321,10 @@ native ("jvm") shared void start([ReadCallback, SocketExceptionHandler]? instanc
         }.start();
         log.trace("launched thread");
     } catch (Throwable t) {
-        if (handler(UnknownServerException(t))) {
+        ServerException se;
+        if (is ServerException t) { se = t; }
+        else { se = UnknownServerException(t); }
+        if (handler(se)) {
             log.warn("server exception handler requests continue but server cannot continue");
         }
     }
@@ -332,10 +341,13 @@ dynamic NodeBuffer {
     shared formal String toString(String encoding);
 }
 
-native ("js") shared void start([ReadCallback, SocketExceptionHandler]? instance(void write(ByteBuffer content, WriteCallback callback), void close()), ServerExceptionHandler handler = logAndAbort(), Integer fd = 0, Boolean concurrent = true) {
+native ("js") shared void start([ReadCallback, SocketExceptionHandler]? instance(void write(ByteBuffer content, WriteCallback callback), void close()), Integer fd, ServerExceptionHandler handler = logAndAbort(), Boolean concurrent = true) {
     // TODO concurrent
     log.trace("starting up");
     try {
+        if (fd < 3) {
+            throw FileDescriptorInvalidException(">= 3", fd);
+        }
         Boolean startInstance(Socket socket) {
             log.trace("starting instance");
             socket.setEncoding("hex");
@@ -427,7 +439,10 @@ native ("js") shared void start([ReadCallback, SocketExceptionHandler]? instance
         }
         log.trace("started without crash");
     } catch (Throwable t) {
-        if (handler(ServerSetupException(t))) {
+        ServerException se;
+        if (is ServerException t) { se = t; }
+        else { se = UnknownServerException(t); }
+        if (handler(se)) {
             log.warn("server exception handler requests continue but server cannot continue");
         }
     }

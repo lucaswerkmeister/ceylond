@@ -10,8 +10,11 @@ shared abstract class ServerException(String? description, Throwable? cause)
 
 "An exception that occurs during server setup.
  Exceptions of this kind cannot be ignored; the server cannot start."
-shared class ServerSetupException(Throwable? cause)
-        extends ServerException("server setup exception", cause) {}
+shared class ServerSetupException(Throwable? cause, String message = "server setup exception")
+        extends ServerException(message, cause) {}
+
+shared class FileDescriptorInvalidException(String limitation, Integer fd)
+        extends ServerSetupException(null, "File descriptor must be ``limitation`` – ``fd`` is not supported") {}
 
 "An exception that occurs during socket setup.
  (This is conceptually more a [[SocketException]] than a [[ServerException]],

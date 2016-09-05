@@ -33,5 +33,6 @@ shared void run() {
             }
             return [read, logAndAbort(`module`)];
         }
+        fd = 3;
     };
 }
