@@ -7,13 +7,13 @@ import ceylon.buffer.charset {
 import ceylon.logging {
     addLogWriter,
     defaultPriority,
-    trace,
+    warn,
     writeSimpleLog
 }
 
 shared void run() {
     addLogWriter(writeSimpleLog);
-    defaultPriority = trace;
+    defaultPriority = warn;
     start {
         [ReadCallback, SocketExceptionHandler]? instance(void write(ByteBuffer content, WriteCallback callback), void close()) {
             log.trace("started instance");
