@@ -23,8 +23,7 @@ import java.lang {
     },
     ObjectArray,
     System { inheritedChannel },
-    Thread,
-    Void
+    Thread
 }
 import java.io {
     FileDescriptor
@@ -33,11 +32,6 @@ import java.nio {
     JByteBuffer=ByteBuffer
 }
 import java.nio.channels {
-    AsynchronousChannelGroup,
-    AsynchronousCloseException,
-    AsynchronousServerSocketChannel,
-    AsynchronousSocketChannel,
-    CompletionHandler,
     Selector,
     SelectionKey {
         op_accept=OP_ACCEPT,
@@ -49,10 +43,6 @@ import java.nio.channels {
 }
 import java.nio.channels.spi {
     AbstractInterruptibleChannel
-}
-import java.util.concurrent {
-    Executors,
-    TimeUnit { seconds=SECONDS }
 }
 import java.net {
     InetSocketAddress
