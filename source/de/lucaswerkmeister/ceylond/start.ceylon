@@ -26,7 +26,8 @@ import java.lang {
     Thread
 }
 import java.io {
-    FileDescriptor
+    FileDescriptor,
+    IOException
 }
 import java.nio {
     JByteBuffer=ByteBuffer
@@ -72,6 +73,26 @@ native ("jvm") JByteBuffer makeReceiveBuffer() {
     return JByteBuffer.allocate(4096); // TODO what’s a good capacity?
 }
 
+"Guesses if a given [[IOException]] was thrown because a socket is closed,
+ based on the message, which is assumed to be a (possibly localized) `strerror(3)` result.
+
+ Only some localized error messages include the standard text as well
+ (in `de_DE.UTF-8`: `EPIPE` but not `ECONNRESET`),
+ so this function is unreliable in non-`C` locales."
+native ("jvm") Boolean isSocketClosedException(IOException e) {
+    value msg = e.message.lowercased;
+    // EPIPE
+    if (msg.contains("broken pipe")) {
+        return true;
+    }
+    // ECONNRESET
+    if (msg.contains("connection reset by peer")) {
+        return true;
+    }
+    // unknown
+    return false;
+}
+
 "A handler for a single connection.
  After instantiating it, register the [[selector]] on the [[socket]] with this as the attachment."
 native ("jvm") class Connection(Selector selector, SocketChannel socket) {
@@ -81,39 +102,82 @@ native ("jvm") class Connection(Selector selector, SocketChannel socket) {
     late ReadCallback read;
     late SocketExceptionHandler handler;
 
+    Boolean onError(SocketException|IOException error) {
+        SocketException se;
+        switch (error)
+        case (is SocketException) { se = error; }
+        case (is IOException) {
+            if (isSocketClosedException(error)) {
+                se = SocketClosedException();
+            } else {
+                se = UnknownSocketException(error);
+            }
+        }
+        value proceed = handler(se);
+        if (proceed && se is SocketClosedException) {
+            log.warn("socket exception handler requests continue but socket is closed");
+        }
+        if (!proceed || se is SocketClosedException) {
+            socket.close();
+            return false;
+        }
+        return true;
+    }
+
     "Read data from the socket and pass it to the [[read]] callback.
-     Call this method when the socket has been signalled to be ready for reading."
-    shared void doRead() {
+     Call this method when the socket has been signalled to be ready for reading.
+
+     The return value indicates whether the socket is still valid;
+     [[false]] means that the socket is or has been closed,
+     and that the main loop, if not concurrent,
+     may now accept the next connection."
+    shared Boolean doRead() {
         log.trace("doing read");
         value jbuffer = makeReceiveBuffer();
-        socket.read(jbuffer);
+        try {
+            socket.read(jbuffer);
+        } catch (IOException e) {
+            return onError(e);
+        }
         jbuffer.flip();
+        if (!jbuffer.hasRemaining()) {
+            return onError(SocketClosedException());
+        }
         value cbuffer = bytebuffer_j2c(jbuffer);
         try {
             read(cbuffer);
         } catch (Throwable t) {
-            handler(ReadCallbackException(t));
-            // TODO handler return value
+            return onError(ReadCallbackException(t));
         }
+        return true;
     }
     "Take a queued write (if there is one) and write it to the socket.
-     Call this method when the socket has been signalled to be ready for writing."
-    shared void doWrite() {
+     Call this method when the socket has been signalled to be ready for writing.
+
+     The return value indicates whether the socket is still valid;
+     [[false]] means that the socket is or has been closed,
+     and that the main loop, if not concurrent,
+     may now accept the next connection."
+    shared Boolean doWrite() {
         log.trace("doing write");
         if (exists jbuffer->callback = writes.front) {
             log.trace("have something to write");
-            socket.write(jbuffer);
+            try {
+                socket.write(jbuffer);
+            } catch (IOException e) {
+                return onError(e);
+            }
             if (jbuffer.remaining() <= 0) {
                 log.trace("write was full");
                 writes.accept();
                 try {
                     callback();
                 } catch (Throwable t) {
-                    handler(WriteCallbackException(t));
-                    // TODO handler return value
+                    return onError(WriteCallbackException(t));
                 }
             }
         }
+        return true;
     }
     "Enqueue a write job.
      The [[content]] will be written as soon as the socket is ready for writing
@@ -293,11 +357,15 @@ native ("jvm") shared void start([ReadCallback, SocketExceptionHandler]? instanc
                             } else {
                                 assert (is Connection connection = selectedKey.attachment());
                                 log.trace("ready to read or write");
-                                if (selectedKey.readable) {
-                                    connection.doRead();
+                                variable Boolean open = true;
+                                if (open && selectedKey.readable) {
+                                    open = connection.doRead();
                                 }
-                                if (selectedKey.writable) {
-                                    connection.doWrite();
+                                if (open && selectedKey.writable) {
+                                    open = connection.doWrite();
+                                }
+                                if (!open) {
+                                    // closing a channel removes it from its selector, we don’t need to worry about that
                                 }
                             }
                         }

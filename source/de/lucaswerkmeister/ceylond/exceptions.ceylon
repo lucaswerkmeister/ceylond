@@ -31,7 +31,13 @@ shared abstract class SocketException(String? description, Throwable? cause)
         of SocketClosedException | ReadCallbackException | WriteCallbackException | UnknownSocketException
         extends Exception(description, cause) {}
 
-"The socket is closed, e. g. because the other side closed it or because the connection broke."
+"The socket is closed, e. g. because the other side closed it or because the connection broke.
+ Exceptions of this kind cannot be ignored; the socket is closed.
+
+ Note that on the JVM, it’s not always possible to determine whether an `IOException` means a closed socket;
+ some may be misclassified as an [[UnknownSocketException]].
+ Unless you can extract more information from the unknown exception than this module can,
+ it’s safest to treat the two as equivalent."
 shared class SocketClosedException()
         extends SocketException("socket closed", null) {}
 
@@ -43,7 +49,10 @@ shared class ReadCallbackException(Throwable cause)
 shared class WriteCallbackException(Throwable cause)
         extends SocketException("write callback exception", cause) {}
 
-"An unknown socket exception."
+"An unknown exception that occurred during a socket operation.
+
+ It is **strongly recommended** to abort on these exceptions (return [[false]] from the error handler),
+ since on the JVM they cannot reliably be distinguished from a [[SocketClosedException]]."
 shared class UnknownSocketException(Throwable? cause)
         extends SocketException("unknown socket exception", cause) {}
 
