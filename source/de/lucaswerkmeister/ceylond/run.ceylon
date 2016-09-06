@@ -33,6 +33,6 @@ shared void run() {
             }
             return [read, logAndAbort(`module`)];
         }
-        fd = 3;
+        fd = switch (runtime.name) case ("jvm") 0 case ("node.js") 3 else -1;
     };
 }
