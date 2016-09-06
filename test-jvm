@@ -1,0 +1,6 @@
+#!/bin/bash
+set -e
+ceylon compile,fat-jar de.lucaswerkmeister.ceylond
+systemd-socket-activate --listen /tmp/mysocket --inetd /usr/bin/java -jar de.lucaswerkmeister.ceylond-1.0.0.jar & sleep 0.5s
+printf Lucas | socat -t 5s /tmp/mysocket -
+kill %%
