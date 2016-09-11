@@ -5,15 +5,15 @@ import ceylon.buffer.charset {
     utf8
 }
 import ceylon.logging {
-    addLogWriter,
-    defaultPriority,
-    warn,
-    writeSimpleLog
+    ...
 }
 
 shared void run() {
-    addLogWriter(writeSimpleLog);
-    defaultPriority = warn;
+    addLogWriter((Priority priority, Category category, String message, Throwable? throwable) {
+            process.writeErrorLine("[``system.milliseconds``] ``priority.string`` ``message``");
+            throwable?.printStackTrace();
+        });
+    defaultPriority = trace;
     start {
         [ReadCallback, SocketExceptionHandler]? instance(void write(ByteBuffer content, WriteCallback callback), void close()) {
             log.trace("started instance");
