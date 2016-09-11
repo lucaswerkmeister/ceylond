@@ -327,26 +327,35 @@ native ("jvm") shared void start([ReadCallback, SocketExceptionHandler]? instanc
 
         value selector = Selector.open();
         log.trace("got selector");
-        server.register(selector, op_accept);
+        variable value serverRegistration = server.register(selector, op_accept);
         log.trace("registered selector");
 
         object extends Thread() {
             shared actual void run() {
                 log.trace("thread started");
                 while (true) {
-                    // TODO concurrent; error handling (what if the other side closes the socket?)
                     if (selector.select() > 0) {
                         value selectedKeys = selector.selectedKeys();
                         for (selectedKey in selectedKeys) {
                             if (selectedKey.acceptable) {
                                 log.trace("server acceptable");
                                 value socket = server.accept();
+                                if (!concurrent) {
+                                    log.trace("unregistering server selector");
+                                    serverRegistration.cancel();
+                                }
                                 socket.configureBlocking(false);
                                 value connection = Connection(selector, socket);
                                 socket.register(selector, op_read.or(op_write), connection);
                                 value inst = instance {
                                     write = connection.write;
-                                    close = socket.close;
+                                    void close() {
+                                        socket.close();
+                                        if (!concurrent) {
+                                            log.trace("reregistering server selector");
+                                            serverRegistration = server.register(selector, op_accept);
+                                        }
+                                    }
                                 };
                                 if (exists [read, error] = inst) {
                                     connection.setReadCallback(read);
@@ -366,6 +375,10 @@ native ("jvm") shared void start([ReadCallback, SocketExceptionHandler]? instanc
                                 }
                                 if (!open) {
                                     // closing a channel removes it from its selector, we don’t need to worry about that
+                                    if (!concurrent) {
+                                        log.trace("reregistering server selector");
+                                        serverRegistration = server.register(selector, op_accept);
+                                    }
                                 }
                             }
                         }
