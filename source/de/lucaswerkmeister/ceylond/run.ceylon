@@ -21,7 +21,7 @@ shared void run() {
             variable Boolean haveName = false;
             log.trace("don’t have a name yet");
             void read(ByteBuffer content) {
-                log.trace("application read something");
+                log.trace("application read something, length ``content.available``");
                 if (haveName) {
                     log.trace("application read a second transmission");
                     write(utf8.encodeBuffer("Thank you, once is quite enough.\n"), () => log.trace("weird write done"));
