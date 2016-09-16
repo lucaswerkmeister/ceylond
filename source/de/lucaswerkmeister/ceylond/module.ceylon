@@ -5,10 +5,6 @@
 
  - On the JVM, this module looks at `IOException` error messages to determine their cause.
    Java localizes those messages, so it’s recommended to run Java with `LC_MESSAGES=C`.
- - On the JVM, reading from a closed socket is not supported.
-   Once the other side closes their end of the socket,
-   a [[SocketClosedException]] will occur,
-   even if some data is still pending to be read.
  - On Node.js, connections to non-concurrent servers
    that are attempted while the server is handling another connection
    are not accepted once the server becomes ready again –
