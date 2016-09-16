@@ -422,7 +422,6 @@ dynamic NodeBuffer {
 }
 
 native ("js") shared void start([ReadCallback, SocketExceptionHandler]? instance(void write(ByteBuffer content, WriteCallback callback), void close()), Integer fd, ServerExceptionHandler handler = logAndAbort(), Boolean concurrent = true) {
-    // TODO concurrent
     log.trace("starting up");
     try {
         if (fd < 3) {
