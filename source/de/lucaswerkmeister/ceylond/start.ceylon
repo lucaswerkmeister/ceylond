@@ -132,7 +132,7 @@ native ("jvm") class Connection(Selector selector, SocketChannel socket) {
      and that the main loop, if not concurrent,
      may now accept the next connection."
     shared Boolean doRead() {
-        log.trace("doing read");
+        log.trace("read from socket");
         value jbuffer = makeReceiveBuffer();
         try {
             socket.read(jbuffer);
@@ -159,9 +159,9 @@ native ("jvm") class Connection(Selector selector, SocketChannel socket) {
      and that the main loop, if not concurrent,
      may now accept the next connection."
     shared Boolean doWrite() {
-        log.trace("doing write");
+        //log.trace("ready to write");
         if (exists jbuffer->callback = writes.front) {
-            log.trace("have something to write");
+            log.trace("write to socket");
             try {
                 socket.write(jbuffer);
             } catch (IOException e) {
@@ -356,7 +356,7 @@ native ("jvm") shared void start([ReadCallback, SocketExceptionHandler]? instanc
                                 }
                             } else {
                                 assert (is Connection connection = selectedKey.attachment());
-                                log.trace("ready to read or write");
+                                //log.trace("ready to read or write");
                                 variable Boolean open = true;
                                 if (open && selectedKey.readable) {
                                     open = connection.doRead();
