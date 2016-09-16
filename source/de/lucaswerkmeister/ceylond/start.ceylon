@@ -161,14 +161,16 @@ native ("jvm") class Connection(Selector selector, SocketChannel socket) {
      may now accept the next connection."
     shared Boolean doWrite() {
         //log.trace("ready to write");
-        if (exists jbuffer->callback = writes.front) {
+        while (exists jbuffer->callback = writes.front) {
             log.trace("write to socket");
+            value bytesBeforeWrite = jbuffer.remaining();
             try {
                 socket.write(jbuffer);
             } catch (IOException e) {
                 return onError(e);
             }
-            if (jbuffer.remaining() <= 0) {
+            value bytesAfterWrite = jbuffer.remaining();
+            if (bytesAfterWrite <= 0) {
                 log.trace("write was full");
                 writes.accept();
                 try {
@@ -176,6 +178,8 @@ native ("jvm") class Connection(Selector selector, SocketChannel socket) {
                 } catch (Throwable t) {
                     return onError(WriteCallbackException(t));
                 }
+            } else if (bytesAfterWrite == bytesBeforeWrite) {
+                break;
             }
         }
         return true;
