@@ -1,6 +1,5 @@
 import ceylon.logging {
-    Category,
-    logger
+    ...
 }
 
 "An exception that occurs on the server socket."
@@ -73,4 +72,31 @@ shared ServerExceptionHandler&SocketExceptionHandler logAndAbort(Category catego
         case (is ServerException) { log.fatal("server exception", exception); }
         return false;
     };
+}
+
+"A [[log writer function|LogWriter]] that prints messages to standard error,
+ prefixed with the priority in a format that the systemd journal interprets as log level (see `sd-daemon(3)`).
+ (The timestamp is not included because that’s the journal’s job.)
+
+ This log writer function must be registered explicitly by calling:
+
+     addLogWriter(writeSystemdLog);"
+shared void writeSystemdLog(Priority priority, Category category, String message, Throwable? throwable) {
+    String sd_level;
+    switch (priority)
+    case (trace | debug) { sd_level = "<7>"; } // SD_DEBUG
+    case (info) { sd_level = "<6>"; } // SD_INFO
+    case (warn) { sd_level = "<4>"; } // SD_WARNING
+    case (error) { sd_level = "<3>"; } // SD_ERR
+    case (fatal) { sd_level = "<2>"; } // SD_CRIT
+    process.writeErrorLine(sd_level + message);
+    if (exists throwable) {
+        printStackTrace(throwable, (String string) {
+                value message = string.trimTrailing("\r\n".contains);
+                if (message.empty) { return; }
+                for (line in message.lines) {
+                    process.writeErrorLine(sd_level + line);
+                }
+            });
+    }
 }

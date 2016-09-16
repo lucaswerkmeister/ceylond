@@ -9,10 +9,7 @@ import ceylon.logging {
 }
 
 shared void run() {
-    addLogWriter((Priority priority, Category category, String message, Throwable? throwable) {
-            process.writeErrorLine("[``system.milliseconds``] ``priority.string`` ``message``");
-            throwable?.printStackTrace();
-        });
+    addLogWriter(writeSystemdLog);
     defaultPriority = trace;
     start {
         [ReadCallback, SocketExceptionHandler]? instance(void write(ByteBuffer content, WriteCallback callback), void close()) {
