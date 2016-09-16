@@ -28,7 +28,8 @@ shared void run() {
                 } else {
                     String name = utf8.decode(content);
                     haveName = true;
-                    write(utf8.encodeBuffer("Greetings, ``name``!\n"), () { log.trace("second write done, closing"); close(); });
+                    write(utf8.encodeBuffer("Greetings, ``name``!\n"), () { log.trace("second write done"); });
+                    write(utf8.encodeBuffer("Goodbye.\n"), () { log.trace("third write done, closing"); close(); });
                 }
             }
             return [read, logAndAbort(`module`)];
