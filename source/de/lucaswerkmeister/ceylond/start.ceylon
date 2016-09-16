@@ -367,11 +367,11 @@ native ("jvm") shared void start([ReadCallback, SocketExceptionHandler]? instanc
                                 assert (is Connection connection = selectedKey.attachment());
                                 //log.trace("ready to read or write");
                                 variable Boolean open = true;
-                                if (open && selectedKey.readable) {
-                                    open = connection.doRead();
-                                }
                                 if (open && selectedKey.writable) {
                                     open = connection.doWrite();
+                                }
+                                if (open && selectedKey.readable) {
+                                    open = connection.doRead();
                                 }
                                 if (!open) {
                                     // closing a channel removes it from its selector, we don’t need to worry about that
