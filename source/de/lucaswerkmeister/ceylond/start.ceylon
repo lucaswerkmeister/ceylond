@@ -33,6 +33,7 @@ import java.nio {
     JByteBuffer=ByteBuffer
 }
 import java.nio.channels {
+    CancelledKeyException,
     Selector,
     SelectionKey {
         op_accept=OP_ACCEPT,
@@ -367,11 +368,15 @@ native ("jvm") shared void start([ReadCallback, SocketExceptionHandler]? instanc
                                 assert (is Connection connection = selectedKey.attachment());
                                 //log.trace("ready to read or write");
                                 variable Boolean open = true;
-                                if (open && selectedKey.writable) {
-                                    open = connection.doWrite();
-                                }
-                                if (open && selectedKey.readable) {
-                                    open = connection.doRead();
+                                try {
+                                    if (open && selectedKey.writable) {
+                                        open = connection.doWrite();
+                                    }
+                                    if (open && selectedKey.readable) {
+                                        open = connection.doRead();
+                                    }
+                                } catch (CancelledKeyException e) {
+                                    open = false;
                                 }
                                 if (!open) {
                                     // closing a channel removes it from its selector, we don’t need to worry about that
