@@ -419,7 +419,7 @@ native ("js") shared void start([ReadCallback, SocketExceptionHandler]? instance
         if (fd < 3) {
             throw FileDescriptorInvalidException(">= 3", fd);
         }
-        Boolean startInstance(Socket socket) {
+        Boolean startInstance(Socket socket, void onClose()) {
             log.trace("starting instance");
             socket.setEncoding("hex");
             variable SocketExceptionHandler? handler = null;
@@ -475,6 +475,7 @@ native ("js") shared void start([ReadCallback, SocketExceptionHandler]? instance
                         }
                     });
                 log.trace("registered socket error handler");
+                socket.on("close", onClose);
                 return true;
             } else {
                 log.trace("don’t have an instance");
@@ -484,20 +485,30 @@ native ("js") shared void start([ReadCallback, SocketExceptionHandler]? instance
         log.trace("creating server");
         dynamic {
             dynamic server = net.createServer();
-            server.on("connection", (Socket socket) {
-                    try {
-                        Boolean keepListening = startInstance(socket);
-                        if (!keepListening) {
-                            log.trace("close server");
-                            server.close();
-                        }
-                    } catch (Throwable t) {
-                        value proceed = handler(SocketSetupException(t));
-                        if (!proceed) {
-                            server.close();
-                        }
+            void onConnection(Socket socket) {
+                try {
+                    Boolean keepListening = startInstance(socket,  () {
+                            if (!concurrent) {
+                                server.once("connection", onConnection);
+                                log.trace("reregistered server selector");
+                            }
+                        });
+                    if (!keepListening) {
+                        log.trace("close server");
+                        server.close();
                     }
-                });
+                } catch (Throwable t) {
+                    value proceed = handler(SocketSetupException(t));
+                    if (!proceed) {
+                        server.close();
+                    }
+                }
+            }
+            if (concurrent) {
+                server.on("connection", onConnection);
+            } else {
+                server.once("connection", onConnection);
+            }
             log.trace("registered server connection handler");
             server.on("error", (dynamic error) {
                     value proceed = handler(UnknownServerException(error));
