@@ -16,6 +16,7 @@ shared alias ReadRecordCallback => Anything(String);
 "Create an instance for [[start]] that reads and writes String *records*,
  separated by a [[record separator|recordSeparator]],
  transferred over the socket using a [[charset]] with an [[error strategy|errorStrategy]]."
+see (`function startRecordBased`)
 aliased ("makeLineBasedInstance")
 shared [ReadCallback, SocketExceptionHandler]? makeRecordBasedInstance(
     "This function is called whenever a new connection to the socket is opened.
@@ -78,3 +79,46 @@ shared [ReadCallback, SocketExceptionHandler]? makeRecordBasedInstance(
         return null;
     }
 }
+
+"""Start listening on the socket, reading and writing records.
+
+   Usage example:
+
+       startRecordBased {
+           function instance(void write(String record, WriteCallback callback), void close()) {
+               write("Hello, World! Please supply your name.", noop);
+               void read(String name) {
+                   write("Greetings, ``name``!", noop);
+                   write("Goodbye.", close);
+               }
+               return [read, logAndAbort(`module`)];
+           }
+           fd = switch (runtime.name) case ("jvm") 0 case ("node.js") 3 else -1;
+       };"""
+see (`function start`, `function makeRecordBasedInstance`)
+aliased ("startLineBased")
+shared void startRecordBased(
+    "See [[makeRecordBasedInstance.instance]]."
+    [ReadRecordCallback, SocketExceptionHandler]? instance(void write(String record, WriteCallback callback), void close()),
+    "See [[start.fd]]."
+    Integer fd,
+    "See [[start.handler]]."
+    ServerExceptionHandler handler = logAndAbort(),
+    "See [[start.concurrent]]."
+    Boolean concurrent = true,
+    "See [[makeRecordBasedInstance.recordSeparator]]."
+    String recordSeparator = "\n",
+    "See [[makeRecordBasedInstance.charset]]."
+    Charset charset = utf8,
+    "See [[makeRecordBasedInstance.errorStrategy]]."
+    ErrorStrategy errorStrategy = strict)
+        => start {
+            instance = makeRecordBasedInstance {
+                instance = instance;
+                recordSeparator = recordSeparator;
+                charset = charset;
+            };
+            fd = fd;
+            handler = handler;
+            concurrent = concurrent;
+        };
