@@ -1,0 +1,68 @@
+#!/bin/bash
+
+function die {
+    local format="$1"
+    shift
+    tput setaf 1
+    printf >&2 "$format\n" "$@"
+    tput sgr0
+    exit 1
+}
+
+function quietly {
+    if [[ $(type -t chronic) == file ]]; then
+        chronic "$@";
+    else
+        "$@";
+    fi
+}
+
+function build-jvm {
+    quietly ceylon compile {,test.}de.lucaswerkmeister.ceylond || die 'JVM build error'
+    quietly ceylon fat-jar test.de.lucaswerkmeister.ceylond || die 'JVM jar error'
+}
+function build-js {
+    quietly ceylon compile-js {,test.}de.lucaswerkmeister.ceylond || die 'JS build error'
+    quietly ceylon copy --js --with-dependencies --include-language --out node_modules {,test.}de.lucaswerkmeister.ceylond || die 'JS copy error'
+}
+function build { build-jvm; build-js; }
+
+function sock-act {
+    local function="$1"
+    case $backend in
+        jvm) quietly systemd-socket-activate --listen /tmp/mysocket --inetd /usr/bin/java -jar test.de.lucaswerkmeister.ceylond-1.0.0.jar "$function";;
+        js) quietly systemd-socket-activate --listen /tmp/mysocket /usr/bin/node -e "require('test/de/lucaswerkmeister/ceylond/1.0.0/test.de.lucaswerkmeister.ceylond-1.0.0').run()" dummy "$function";;
+        *) die 'Unknown backend %s' "$backend";;
+    esac
+}
+
+function write-then-assert-equals {
+    local content="$1"
+    local expected="$2"
+    local actual="$({ printf '%s' "$content"; sleep 1s; } | socat /tmp/mysocket -)"
+    local test="${FUNCNAME[1]}"
+    if [[ "$expected" == "$actual" ]]; then
+        tput setaf 2; printf '%s/%s: success\n' "$test" "$backend"; tput sgr0
+    else
+        die '%s/%s: expected\n%s\nbut was\n%s\n' "$test" "$backend" "$expected" "$actual"
+    fi
+}
+
+function greeter-direct {
+    sock-act greeter_direct & sleep 0.1s
+    write-then-assert-equals Lucas $'Hello, World! Please supply your name.\nGreetings, Lucas!\nGoodbye.'
+}
+function greeter-record {
+    sock-act greeter_record & sleep 0.1s
+    write-then-assert-equals $'Lucas\n' $'Hello, World! Please supply your name.\nGreetings, Lucas!\nGoodbye.'
+}
+
+if ! [[ -v nobuild ]]; then
+    build
+fi
+for test in ${tests:-greeter-direct greeter-record}; do
+    for backend in ${backends:-jvm js}; do
+        $test || die 'Unhandled error in %s' "$test"
+    done
+done
+tput setaf 2; echo SUCCESS; tput sgr0

@@ -1,7 +1,0 @@
-#!/bin/bash
-set -e
-ceylon compile-js de.lucaswerkmeister.ceylond
-ceylon copy --js `#--with-dependencies` `#--include-language` --out node_modules de.lucaswerkmeister.ceylond
-systemd-socket-activate --listen /tmp/mysocket /usr/bin/node -e "require('de/lucaswerkmeister/ceylond/1.0.0/de.lucaswerkmeister.ceylond-1.0.0').run()" & sleep 0.5s
-printf Lucas | socat -t 5s /tmp/mysocket -
-kill %%
