@@ -34,6 +34,7 @@ import java.nio {
 }
 import java.nio.channels {
     CancelledKeyException,
+    ClosedChannelException,
     Selector,
     SelectionKey {
         op_accept=OP_ACCEPT,
@@ -137,6 +138,8 @@ native ("jvm") class Connection(Selector selector, SocketChannel socket) {
         value jbuffer = makeReceiveBuffer();
         try {
             socket.read(jbuffer);
+        } catch (ClosedChannelException e) {
+            return onError(SocketClosedException());
         } catch (IOException e) {
             return onError(e);
         }
@@ -166,6 +169,8 @@ native ("jvm") class Connection(Selector selector, SocketChannel socket) {
             value bytesBeforeWrite = jbuffer.remaining();
             try {
                 socket.write(jbuffer);
+            } catch (ClosedChannelException e) {
+                return onError(SocketClosedException());
             } catch (IOException e) {
                 return onError(e);
             }
