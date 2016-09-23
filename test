@@ -30,8 +30,8 @@ function build { build-jvm; build-js; }
 function sock-act {
     local function="$1"
     case $backend in
-        jvm) quietly systemd-socket-activate --listen /tmp/mysocket --inetd /usr/bin/java -jar test.de.lucaswerkmeister.ceylond-1.0.0.jar "$function";;
-        js) quietly systemd-socket-activate --listen /tmp/mysocket /usr/bin/node -e "require('test/de/lucaswerkmeister/ceylond/1.0.0/test.de.lucaswerkmeister.ceylond-1.0.0').run()" dummy "$function";;
+        jvm) quietly systemd-socket-activate -E LC_ALL=en_US.UTF-8 -E LC_MESSAGES=C --listen /tmp/mysocket --inetd /usr/bin/java -jar test.de.lucaswerkmeister.ceylond-1.0.0.jar "$function";;
+        js) quietly systemd-socket-activate -E LC_ALL=en_US.UTF-8 -E LC_MESSAGES=C --listen /tmp/mysocket /usr/bin/node -e "require('test/de/lucaswerkmeister/ceylond/1.0.0/test.de.lucaswerkmeister.ceylond-1.0.0').run()" dummy "$function";;
         *) die 'Unknown backend %s' "$backend";;
     esac
 }
