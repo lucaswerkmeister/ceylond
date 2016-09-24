@@ -48,6 +48,16 @@ function write-then-assert-equals {
         die '%s/%s: expected\n%s\nbut was\n%s\n' "$test" "$backend" "$expected" "$actual"
     fi
 }
+function write-then-assert-success {
+    local content="$1"
+    local test="${FUNCNAME[1]}"
+    { printf '%s' "$content"; sleep 1s; } | socat /tmp/mysocket -;
+    if wait %%; then
+        tput setaf 2; printf '%s/%s: success\n' "$test" "$backend"; tput sgr0
+    else
+        die '%s/%s: failed' "$test" "$backend"
+    fi
+}
 
 function greeter-direct {
     sock-act greeter_direct & sleep 0.1s
@@ -57,11 +67,15 @@ function greeter-record {
     sock-act greeter_record & sleep 0.1s
     write-then-assert-equals $'Lucas\n' $'Hello, World! Please supply your name.\nGreetings, Lucas!\nGoodbye.'
 }
+function record-separator {
+    sock-act record_separator & sleep 0.1s
+    write-then-assert-success 'ababbaabbcdabababbaabaababbaababbaababbaabbefababbaabaghababbaaba'
+}
 
 if ! [[ -v nobuild ]]; then
     build
 fi
-for test in ${tests:-greeter-direct greeter-record}; do
+for test in ${tests:-greeter-direct greeter-record record-separator}; do
     for backend in ${backends:-jvm js}; do
         $test || die 'Unhandled error in %s' "$test"
     done
