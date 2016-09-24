@@ -488,7 +488,14 @@ native ("js") shared void start([ReadCallback, SocketExceptionHandler]? instance
                         }
                     });
                 log.trace("registered socket error handler");
-                socket.on("close", onClose);
+                socket.on("close", () {
+                    value proceed = error(SocketClosedException());
+                    socket.end();
+                    if (proceed) {
+                        log.warn("socket excepton handler requests continue but socket is closed");
+                    }
+                    onClose();
+                });
                 return true;
             } else {
                 log.trace("don’t have an instance");
