@@ -41,6 +41,7 @@ function write-then-assert-equals {
     local expected="$2"
     local actual="$({ printf '%s' "$content"; sleep 1s; } | socat /tmp/mysocket -)"
     local test="${FUNCNAME[1]}"
+    wait %% || die '%s/%s: failed' "$test" "$backend"
     if [[ "$expected" == "$actual" ]]; then
         tput setaf 2; printf '%s/%s: success\n' "$test" "$backend"; tput sgr0
     else
