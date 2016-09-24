@@ -9,7 +9,7 @@ shared void greeter_record()
                 write("Hello, World! Please supply your name.", noop);
                 void read(String name) {
                     write("Greetings, ``name``!", noop);
-                    write("Goodbye.", close);
+                    write("Goodbye.", closeAndExit(close));
                 }
                 return [read, logAndDie(`module`)];
             }

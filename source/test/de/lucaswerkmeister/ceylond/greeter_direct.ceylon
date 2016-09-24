@@ -16,7 +16,7 @@ shared void greeter_direct()
                 void read(ByteBuffer content) {
                     value name = utf8.decodeBuffer(content);
                     write(utf8.encodeBuffer("Greetings, ``name``!\n"), noop);
-                    write(utf8.encodeBuffer("Goodbye.\n"), close);
+                    write(utf8.encodeBuffer("Goodbye.\n"), closeAndExit(close));
                 }
                 return [read, logAndDie(`module`)];
             }
