@@ -29,9 +29,10 @@ function build { build-jvm; build-js; }
 
 function sock-act {
     local function="$1"
+    local where="${2:-/tmp/mysocket}"
     case $backend in
-        jvm) quietly systemd-socket-activate -E LC_ALL=en_US.UTF-8 -E LC_MESSAGES=C --listen /tmp/mysocket --inetd /usr/bin/java -jar test.de.lucaswerkmeister.ceylond-1.0.0.jar "$function";;
-        js) quietly systemd-socket-activate -E LC_ALL=en_US.UTF-8 -E LC_MESSAGES=C --listen /tmp/mysocket /usr/bin/node -e "require('test/de/lucaswerkmeister/ceylond/1.0.0/test.de.lucaswerkmeister.ceylond-1.0.0').run()" dummy "$function";;
+        jvm) quietly systemd-socket-activate -E LC_ALL=en_US.UTF-8 -E LC_MESSAGES=C --listen "$where" --inetd /usr/bin/java -jar test.de.lucaswerkmeister.ceylond-1.0.0.jar "$function";;
+        js) quietly systemd-socket-activate -E LC_ALL=en_US.UTF-8 -E LC_MESSAGES=C --listen "$where" /usr/bin/node -e "require('test/de/lucaswerkmeister/ceylond/1.0.0/test.de.lucaswerkmeister.ceylond-1.0.0').run()" dummy "$function";;
         *) die 'Unknown backend %s' "$backend";;
     esac
 }
@@ -71,11 +72,30 @@ function record-separator {
     sock-act record_separator & sleep 0.2s
     write-then-assert-success 'ababbaabbcdabababbaabaababbaababbaababbaabbefababbaabaghababbaaba'
 }
+function http-server {
+    local port=${http_server_port:-8080}
+    sock-act http_server "$port" & sleep 0.2s
+    expected_info=$'test.de.lucaswerkmeister.ceylond/1.0.0 on Ceylon 1.3.0 “Total Internal Reflection”\r'
+    expected_greeting=$'Hello, World!\r'
+    actual_info=$(curl -s http://localhost:"$port"/info)
+    actual_greeting=$(curl -s http://localhost:"$port"/greeting)
+    curl -s -X QUIT http://localhost:"$port"/
+    if ! wait %%; then
+        die 'http-server/%s: failed' "$backend"
+    fi
+    if [[ "$expected_info" != "$actual_info" ]]; then
+        die 'http-server/%s: expected \n%q\nbut was\n%q\n' "$backend" "$expected_info" "$actual_info"
+    elif [[ "$expected_greeting" != "$actual_greeting" ]]; then
+        die 'http-server/%s: expected \n%q\nbut was\n%q\n' "$backend" "$expected_greeting" "$actual_greeting"
+    else
+        tput setaf 2; printf 'http-server/%s: success\n' "$backend"; tput sgr0
+    fi
+}
 
 if ! [[ -v nobuild ]]; then
     build
 fi
-for test in ${tests:-greeter-direct greeter-record record-separator}; do
+for test in ${tests:-greeter-direct greeter-record record-separator http-server}; do
     for backend in ${backends:-jvm js}; do
         $test || die 'Unhandled error in %s' "$test"
     done
