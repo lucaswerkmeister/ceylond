@@ -12,6 +12,7 @@ shared abstract class ServerException(String? description, Throwable? cause)
 shared class ServerSetupException(Throwable? cause, String message = "server setup exception")
         extends ServerException(message, cause) {}
 
+"The file descriptor passed to [[start]] is invalid for the current backend."
 shared class FileDescriptorInvalidException(String limitation, Integer fd)
         extends ServerSetupException(null, "File descriptor must be ``limitation`` – ``fd`` is not supported") {}
 
