@@ -45,7 +45,7 @@ function write-then-assert-equals {
     if [[ "$expected" == "$actual" ]]; then
         tput setaf 2; printf '%s/%s: success\n' "$test" "$backend"; tput sgr0
     else
-        die '%s/%s: expected\n%s\nbut was\n%s\n' "$test" "$backend" "$expected" "$actual"
+        die '%s/%s: expected\n%q\nbut was\n%q\n' "$test" "$backend" "$expected" "$actual"
     fi
 }
 function write-then-assert-success {
