@@ -10,7 +10,7 @@ function die {
 }
 
 function quietly {
-    if [[ $(type -t chronic) == file ]]; then
+    if [[ $(type -t chronic) == file ]] && ! [[ -v loudly ]]; then
         chronic "$@";
     else
         "$@";
