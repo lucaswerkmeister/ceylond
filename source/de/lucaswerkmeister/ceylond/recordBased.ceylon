@@ -21,9 +21,20 @@ aliased ("makeLineBasedInstance")
 shared [ReadCallback, SocketExceptionHandler]? makeRecordBasedInstance(
     "This function is called whenever a new connection to the socket is opened.
      It works just like [[start.instance]],
-     except that [[write]] appends the record separator and encodes with the [[charset]],
+     except that [[write]] also accepts a record
+     (in which case it appends the record separator and encodes with the [[charset]]),
      and the read callback is only called with complete individual records."
-    [ReadRecordCallback, SocketExceptionHandler]? instance(void write(String record, WriteCallback callback), void close()),
+    [ReadRecordCallback, SocketExceptionHandler]? instance(
+        "Write the [[content]] to the socket.
+
+         If the content is a [[String]], it is taken to be a record.
+         The [[record separator|recordSeparator]] is appended,
+         and then the result is encoded with the [[charset]] before being sent.
+
+         If the content is a [[ByteBuffer]], it is written directly,
+         without a record separator."
+        void write(String|ByteBuffer content, WriteCallback callback),
+        void close()),
     "The record separator, which may be any nonempty [[String]].
      The default is the newline (`\\n`), so that a record is a line.
      Many internet protocols (e. g. HTTP, SMTP, Telnet) use CRLF (`\\r\\n`)."
@@ -35,8 +46,12 @@ shared [ReadCallback, SocketExceptionHandler]? makeRecordBasedInstance(
     "Record separator must not be empty"
     assert (!recordSeparator.empty);
     value inst = instance {
-        void write(String record, WriteCallback callback) {
-            write(charset.encodeBuffer(record + recordSeparator), callback);
+        void write(String|ByteBuffer content, WriteCallback callback) {
+            ByteBuffer toWrite;
+            switch (content)
+            case (is String) { toWrite = charset.encodeBuffer(content + recordSeparator, errorStrategy); }
+            case (is ByteBuffer) { toWrite = content; }
+            write(toWrite, callback);
         }
         close = close;
     };
@@ -136,7 +151,7 @@ see (`function start`, `function makeRecordBasedInstance`)
 aliased ("startLineBased")
 shared void startRecordBased(
     "See [[makeRecordBasedInstance.instance]]."
-    [ReadRecordCallback, SocketExceptionHandler]? instance(void write(String record, WriteCallback callback), void close()),
+    [ReadRecordCallback, SocketExceptionHandler]? instance(void write(String|ByteBuffer content, WriteCallback callback), void close()),
     "See [[start.fd]]."
     Integer fd,
     "See [[start.handler]]."

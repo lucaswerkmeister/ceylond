@@ -2,30 +2,38 @@ import de.lucaswerkmeister.ceylond {
     WriteCallback,
     startRecordBased
 }
+import ceylon.buffer {
+    ByteBuffer
+}
+import ceylon.buffer.charset {
+    utf8
+}
 
 shared void http_server()
         => startRecordBased {
-            function instance(void write(String record, WriteCallback callback), void close()) {
+            function instance(void write(String|ByteBuffer content, WriteCallback callback), void close()) {
                 variable String? path = null;
                 void read(String record) {
                     if (exists requestedPath = path) {
                         if (record.empty) {
+                            String? content;
                             switch (requestedPath)
                             case ("/info") {
-                                write("HTTP/1.0 200 OK", noop);
-                                write("Content-type: text/plain; charset=utf-8", noop);
-                                write("", noop);
-                                write("`` `module`.name ``/`` `module`.version `` on Ceylon ``language.version`` “``language.versionName``”", close);
+                                content = "`` `module`.name ``/`` `module`.version `` on Ceylon ``language.version`` “``language.versionName``”";
                             }
                             case ("/greeting") {
+                                content = "Hello, World!";
+                            }
+                            else {
+                                content = null;
+                                write("HTTP/1.0 404 File not found", noop);
+                                write("", close);
+                            }
+                            if (exists content) {
                                 write("HTTP/1.0 200 OK", noop);
                                 write("Content-type: text/plain; charset=utf-8", noop);
                                 write("", noop);
-                                write("Hello, World!", close);
-                            }
-                            else {
-                                write("HTTP/1.0 404 File not found", noop);
-                                write("", close);
+                                write(utf8.encodeBuffer(content), close);
                             }
                         } else {
                             assert (record.split().first.endsWith(":"));
