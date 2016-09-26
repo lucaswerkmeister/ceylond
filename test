@@ -60,15 +60,15 @@ function write-then-assert-success {
 }
 
 function greeter-direct {
-    sock-act greeter_direct & sleep 0.1s
+    sock-act greeter_direct & sleep 0.2s
     write-then-assert-equals Lucas $'Hello, World! Please supply your name.\nGreetings, Lucas!\nGoodbye.'
 }
 function greeter-record {
-    sock-act greeter_record & sleep 0.1s
+    sock-act greeter_record & sleep 0.2s
     write-then-assert-equals $'Lucas\n' $'Hello, World! Please supply your name.\nGreetings, Lucas!\nGoodbye.'
 }
 function record-separator {
-    sock-act record_separator & sleep 0.1s
+    sock-act record_separator & sleep 0.2s
     write-then-assert-success 'ababbaabbcdabababbaabaababbaababbaababbaabbefababbaabaghababbaaba'
 }
 
