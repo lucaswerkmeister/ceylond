@@ -26,7 +26,7 @@ shared [ReadCallback, SocketExceptionHandler]? makeRecordBasedInstance(
     [ReadRecordCallback, SocketExceptionHandler]? instance(void write(String record, WriteCallback callback), void close()),
     "The record separator, which may be any nonempty [[String]].
      The default is the newline (`\\n`), so that a record is a line.
-     Many internet protocols (e. g. HTTP, STMP, Telnet) use CRLF (`\\r\\n`)."
+     Many internet protocols (e. g. HTTP, SMTP, Telnet) use CRLF (`\\r\\n`)."
     String recordSeparator = "\n",
     "The charset that is used to encode and decode records for transfer on the socket."
     Charset charset = utf8,
