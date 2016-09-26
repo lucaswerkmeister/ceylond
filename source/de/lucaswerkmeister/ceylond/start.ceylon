@@ -436,6 +436,7 @@ native ("js") shared void start([ReadCallback, SocketExceptionHandler]? instance
             log.trace("starting instance");
             socket.setEncoding("hex");
             variable SocketExceptionHandler? handler = null;
+            variable Boolean closedByDaemon = false;
             value inst = instance {
                 void write(ByteBuffer content, WriteCallback callback) {
                     String hex = base16String.encode(content);
@@ -455,6 +456,7 @@ native ("js") shared void start([ReadCallback, SocketExceptionHandler]? instance
                 }
                 void close() {
                     log.trace("end socket");
+                    closedByDaemon = true;
                     socket.end();
                 }
             };
@@ -489,10 +491,12 @@ native ("js") shared void start([ReadCallback, SocketExceptionHandler]? instance
                     });
                 log.trace("registered socket error handler");
                 socket.on("close", () {
-                    value proceed = error(SocketClosedException());
-                    socket.end();
-                    if (proceed) {
-                        log.warn("socket excepton handler requests continue but socket is closed");
+                    if (!closedByDaemon) {
+                        value proceed = error(SocketClosedException());
+                        socket.end();
+                        if (proceed) {
+                            log.warn("socket excepton handler requests continue but socket is closed");
+                        }
                     }
                     onClose();
                 });
