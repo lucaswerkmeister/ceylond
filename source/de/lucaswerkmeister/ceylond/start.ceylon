@@ -21,7 +21,6 @@ import java.lang {
     JInteger=Integer {
         intType=TYPE
     },
-    ObjectArray,
     System { inheritedChannel },
     Thread
 }
@@ -213,7 +212,7 @@ native ("jvm") class Connection(Selector selector, SocketChannel socket) {
 native ("jvm") ServerSocketChannel makeChannel(Integer fd) {
     log.trace("making server socket channel");
     value fileDescriptorConstructor = javaClass<FileDescriptor>().getDeclaredConstructor(intType);
-    fileDescriptorConstructor.setAccessible(ObjectArray(1, fileDescriptorConstructor), true);
+    fileDescriptorConstructor.accessible = true;
     log.trace("got accessible constructor");
     value fileDescriptor = fileDescriptorConstructor.newInstance(JInteger(fd));
     log.trace("got fileDescriptor");
@@ -223,20 +222,20 @@ native ("jvm") ServerSocketChannel makeChannel(Integer fd) {
     
     value address = InetSocketAddress(0);
     value localAddressField = javaClassFromInstance(server).getDeclaredField("localAddress");
-    localAddressField.setAccessible(ObjectArray(1, localAddressField), true);
+    localAddressField.accessible = true;
     localAddressField.set(server, address);
     log.trace("bound server socket channel");
     
     value openField = javaClass<AbstractInterruptibleChannel>().getDeclaredField("open");
-    openField.setAccessible(ObjectArray(1, openField), true);
+    openField.accessible = true;
     openField.set(server, JBoolean(true));
     log.trace("un-closed server socket channel");
     
     value fdField = javaClassFromInstance(server).getDeclaredField("fd");
-    fdField.setAccessible(ObjectArray(1, fdField), true);
+    fdField.accessible = true;
     fdField.set(server, fileDescriptor);
     value fdValField = javaClassFromInstance(server).getDeclaredField("fdVal");
-    fdValField.setAccessible(ObjectArray(1, fdValField), true);
+    fdValField.accessible = true;
     fdValField.set(server, JInteger(fd));
     log.trace("injected fd");
     
