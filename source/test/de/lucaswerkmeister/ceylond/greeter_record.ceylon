@@ -1,5 +1,7 @@
-import de.lucaswerkmeister.ceylond {
-    WriteCallback,
+import de.lucaswerkmeister.ceylond.core {
+    WriteCallback
+}
+import de.lucaswerkmeister.ceylond.recordBased {
     startRecordBased
 }
 

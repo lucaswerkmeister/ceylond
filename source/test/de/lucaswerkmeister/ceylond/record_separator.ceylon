@@ -1,7 +1,9 @@
-import de.lucaswerkmeister.ceylond {
+import de.lucaswerkmeister.ceylond.core {
     SocketClosedException,
     SocketException,
-    WriteCallback,
+    WriteCallback
+}
+import de.lucaswerkmeister.ceylond.recordBased {
     startRecordBased
 }
 import ceylon.logging {

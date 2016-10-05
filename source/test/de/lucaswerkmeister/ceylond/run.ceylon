@@ -1,4 +1,4 @@
-import de.lucaswerkmeister.ceylond {
+import de.lucaswerkmeister.ceylond.core {
     writeSystemdLog
 }
 import ceylon.logging {
