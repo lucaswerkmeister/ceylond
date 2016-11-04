@@ -2,6 +2,7 @@
 /modules/
 /node_modules/
 /*.jar
+/packet-based
 
 # backup files
 *~

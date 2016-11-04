@@ -18,12 +18,12 @@ function quietly {
 }
 
 function build-jvm {
-    quietly ceylon compile de.lucaswerkmeister.ceylond.{core,recordBased} test.de.lucaswerkmeister.ceylond || die 'JVM build error'
+    quietly ceylon compile de.lucaswerkmeister.ceylond.{core,recordBased,packetBased} test.de.lucaswerkmeister.ceylond || die 'JVM build error'
     quietly ceylon fat-jar test.de.lucaswerkmeister.ceylond || die 'JVM jar error'
 }
 function build-js {
-    quietly ceylon compile-js de.lucaswerkmeister.ceylond.{core,recordBased} test.de.lucaswerkmeister.ceylond || die 'JS build error'
-    quietly ceylon copy --js --with-dependencies --include-language --out node_modules de.lucaswerkmeister.ceylond.{core,recordBased} test.de.lucaswerkmeister.ceylond || die 'JS copy error'
+    quietly ceylon compile-js de.lucaswerkmeister.ceylond.{core,recordBased,packetBased} test.de.lucaswerkmeister.ceylond || die 'JS build error'
+    quietly ceylon copy --js --with-dependencies --include-language --out node_modules de.lucaswerkmeister.ceylond.{core,recordBased,packetBased} test.de.lucaswerkmeister.ceylond || die 'JS copy error'
 }
 function build { build-jvm; build-js; }
 
@@ -91,11 +91,20 @@ function http-server {
         tput setaf 2; printf 'http-server/%s: success\n' "$backend"; tput sgr0
     fi
 }
+function packet-based {
+    quietly make packet-based || die 'packet-based/%s: make error' "$backend"
+    sock-act packet_based & sleep 0.2s
+    if ! ./packet-based || ! wait %%; then
+        die 'packet_based/%s: failed' "$backend"
+    else
+        tput setaf 2; printf 'packet-based/%s: success\n' "$backend"; tput sgr0
+    fi
+}
 
 if ! [[ -v nobuild ]]; then
     build
 fi
-for test in ${tests:-greeter-direct greeter-record record-separator http-server}; do
+for test in ${tests:-greeter-direct greeter-record record-separator http-server packet-based}; do
     for backend in ${backends:-jvm js}; do
         $test || die 'Unhandled error in %s' "$test"
     done
