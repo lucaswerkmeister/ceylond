@@ -31,7 +31,7 @@ shared [ReadCallback, SocketExceptionHandler]? makePacketBasedInstance(
  If a packet with an unknown type (not [[defined|Correspondence.defines]] by the type map) is returned,
  an error is logged and the connection is immediately closed.
  (The exception handler returned by [[instance]] is not consulted in this case.)"
-[Correspondence<Integer, ReadCallback>, SocketExceptionHandler]? instance(
+[TypeMap, SocketExceptionHandler]? instance(
 "Write a packet with the given [[content]] and [[type]] to the socket."
 void write(ByteBuffer content, Integer type, WriteCallback callback),
 void close()),
