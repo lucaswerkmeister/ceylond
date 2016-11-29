@@ -101,10 +101,18 @@ function packet-based {
     fi
 }
 
+function unit {
+    case $backend in
+        jvm) quietly ceylon test test.de.lucaswerkmeister.ceylond/1.0.0;;
+        js) quietly ceylon test-js test.de.lucaswerkmeister.ceylond/1.0.0;;
+        *) die 'Unknown backend %s' "$backend";;
+    esac
+}
+
 if ! [[ -v nobuild ]]; then
     build
 fi
-for test in ${tests:-greeter-direct greeter-record record-separator http-server packet-based}; do
+for test in ${tests:-greeter-direct greeter-record record-separator http-server packet-based unit}; do
     for backend in ${backends:-jvm js}; do
         $test || die 'Unhandled error in %s' "$test"
     done

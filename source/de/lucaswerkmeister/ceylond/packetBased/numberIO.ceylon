@@ -4,7 +4,7 @@ import ceylon.buffer {
 
 "Writes the given unsigned [[integer]] in network byte order (big-endian) to the [[buffer]].
  Exactly [[size]] bytes of output are written."
-void writeInteger(Integer integer, Integer size, ByteBuffer buffer) {
+shared void writeInteger(Integer integer, Integer size, ByteBuffer buffer) {
     "Does not support signed integers"
     assert (integer >= 0);
     "Does not support integers longer than the runtime addressable integer size"
@@ -24,7 +24,7 @@ void writeInteger(Integer integer, Integer size, ByteBuffer buffer) {
 "Reads an unsigned [[Integer]] in network byte order (big-endian) from the given [[buffer]],
  which must not have more than [[runtime.integerAddressableSize]]/8 bytes [[available|ceylon.buffer::Buffer.available]].
  All available bytes in the buffer are read."
-Integer readInteger(ByteBuffer buffer) {
+shared Integer readInteger(ByteBuffer buffer) {
     "Does not support integers longer than the runtime addressable integer size"
     assert (8*buffer.available <= runtime.integerAddressableSize);
     variable Integer integer = 0;
