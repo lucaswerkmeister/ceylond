@@ -4,7 +4,7 @@ import ceylon.buffer {
 
 "Writes the given unsigned [[integer]] in network byte order (big-endian) to the [[buffer]].
  Exactly [[size]] bytes of output are written."
-void writeInteger(variable Integer integer, Integer size, ByteBuffer buffer) {
+void writeInteger(Integer integer, Integer size, ByteBuffer buffer) {
     "Does not support signed integers"
     assert (integer >= 0);
     "Does not support integers longer than the runtime addressable integer size"
@@ -13,15 +13,10 @@ void writeInteger(variable Integer integer, Integer size, ByteBuffer buffer) {
     assert (integer < 256^size || size == 8);
     "Buffer must have [[size]] bytes available"
     assert (buffer.available >= size);
-    if (size != 0) { // [[modulus]] calculation is invalid in size 0
-        value modulus = 256^(size-1);
-        variable value sizeBytes = 0; // #FFFF.., [[size]] bytes wide
-        for (index in 0:size) {
-            sizeBytes = sizeBytes.leftLogicalShift(8).or(#FF);
-        }
-        for (index in 0:size) {
-            buffer.put((integer / modulus).byte);
-            integer = integer.leftLogicalShift(8).and(sizeBytes);
+    if (size > 0) {
+        for (offset in (size - 1) .. 0) {
+            value byte = integer.rightLogicalShift(8 * offset).byte;
+            buffer.put(byte);
         }
     }
 }
