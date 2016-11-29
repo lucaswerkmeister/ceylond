@@ -3,6 +3,7 @@ import ceylon.buffer {
 }
 import ceylon.test {
     assertEquals,
+    assertThatException,
     test,
     parameters
 }
@@ -88,4 +89,18 @@ shared void testWriteInteger(Integer int, Integer size) {
         expected = int;
         actual = int_;
     };
+}
+
+test
+shared void testWriteIntegerPreconditions() {
+    Boolean mustContain(String part)(String message) => message.indexOf(part) >= 0;
+    ByteBuffer buf = ByteBuffer.ofSize(256);
+    assertThatException(() => writeInteger(-1, 0, buf)).hasType(`AssertionError`).hasMessage(mustContain("signed"));
+    assertThatException(() => writeInteger(0, 128, buf)).hasType(`AssertionError`).hasMessage(mustContain("runtime"));
+    assertThatException(() => writeInteger(1, 0, buf)).hasType(`AssertionError`).hasMessage(mustContain("fit"));
+    assertThatException(() => writeInteger(#100, 1, buf)).hasType(`AssertionError`).hasMessage(mustContain("fit"));
+    assertThatException(() => writeInteger(#10000, 2, buf)).hasType(`AssertionError`).hasMessage(mustContain("fit"));
+    if (runtime.integerAddressableSize > 8 * 4) {
+        assertThatException(() => writeInteger(#100000000, 4, buf)).hasType(`AssertionError`).hasMessage(mustContain("fit"));
+    }
 }
