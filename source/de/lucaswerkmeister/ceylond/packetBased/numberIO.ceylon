@@ -10,7 +10,7 @@ shared void writeInteger(Integer integer, Integer size, ByteBuffer buffer) {
     "Does not support integers longer than the runtime addressable integer size"
     assert (0 <= 8*size <= runtime.integerAddressableSize);
     "Integer must fit into [[size]] bytes"
-    assert (integer < 256^size || size == 8);
+    assert (integer.rightLogicalShift(8 * size) == 0 || 8*size >= runtime.integerAddressableSize);
     "Buffer must have [[size]] bytes available"
     assert (buffer.available >= size);
     if (size > 0) {
