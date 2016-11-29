@@ -75,7 +75,7 @@ function record-separator {
 function http-server {
     local port=${http_server_port:-8080}
     sock-act http_server "$port" & sleep 0.2s
-    expected_info='test.de.lucaswerkmeister.ceylond/1.0.0 on Ceylon 1.3.0 “Total Internal Reflection”'
+    expected_info='test.de.lucaswerkmeister.ceylond/1.0.0 on Ceylon 1.3.1 “Now We Try It My Way”'
     expected_greeting='Hello, World!'
     actual_info=$(curl -s http://localhost:"$port"/info)
     actual_greeting=$(curl -s http://localhost:"$port"/greeting)
