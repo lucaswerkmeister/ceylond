@@ -3,6 +3,7 @@
 /node_modules/
 /*.jar
 /packet-based
+/client/client
 
 # backup files
 *~
