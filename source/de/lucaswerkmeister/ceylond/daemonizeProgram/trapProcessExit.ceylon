@@ -76,7 +76,8 @@ native ("jvm") void trapProcessExit(void trap(Integer exitCode)) {
         checkExec = securityManager.checkExec;
         checkLink = securityManager.checkLink;
         checkListen = securityManager.checkListen;
-        checkMemberAccess = securityManager.checkMemberAccess;
+        //checkMemberAccess = securityManager.checkMemberAccess;
+        shared actual void checkMemberAccess(JClass<out Object> clazz, Integer which) => securityManager.checkMemberAccess(clazz, which);
         shared actual void checkMulticast(InetAddress maddr) => securityManager.checkMulticast(maddr);
         shared actual void checkMulticast(InetAddress maddr, Byte ttl) => securityManager.checkMulticast(maddr, ttl);
         checkPackageAccess = securityManager.checkPackageAccess;
