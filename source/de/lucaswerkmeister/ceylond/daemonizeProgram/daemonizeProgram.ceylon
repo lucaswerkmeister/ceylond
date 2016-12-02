@@ -151,6 +151,7 @@ shared [ReadCallback, SocketExceptionHandler]? makeDaemonizeProgramInstance(
     Integer maximumPacketLength = 256^lengthSize - 1)(void write(ByteBuffer content, WriteCallback callback), void close()) {
     return makePacketBasedInstance {
         function instance(void write(ByteBuffer content, Integer type, WriteCallback callback), void close()) {
+            log.trace("creating daemonizeProgram instance");
             MutableList<String> arguments = ArrayList<String>();
             variable String? workingDirectory = null;
             ByteBuffer standardInput = ByteBuffer.ofSize(0);
@@ -161,6 +162,7 @@ shared [ReadCallback, SocketExceptionHandler]? makeDaemonizeProgramInstance(
                 "Program must not be launched yet"
                 assert (!launched);
                 arguments.add(utf8.decode(content));
+                log.trace("added argument no. ``arguments.size``");
             }
             void readWorkingDirectory(ByteBuffer content) {
                 "Working directory can only be set once"
@@ -168,6 +170,7 @@ shared [ReadCallback, SocketExceptionHandler]? makeDaemonizeProgramInstance(
                 "Program must not be launched yet"
                 assert (!launched);
                 workingDirectory = utf8.decode(content);
+                log.trace("set working directory to ``workingDirectory else ""``");
             }
             void readStandardInput(ByteBuffer content) {
                 "Program must not be launched yet"
@@ -175,9 +178,11 @@ shared [ReadCallback, SocketExceptionHandler]? makeDaemonizeProgramInstance(
                 try {
                     grow(standardInput, content.available, maximumStandardInput, StandardInputExceeded);
                 } catch (StandardInputExceeded e) {
+                    log.info("standard input limit (``e.limit``) exceeded");
                     write(intToBuffer(e.limit, 8), #90, noop);
                     write(intToBuffer(#100000000, 8), #80, close);
                 }
+                log.trace("adding ``content.available`` bytes of standard input");
                 while (content.hasAvailable) {
                     standardInput.put(content.get());
                 }
@@ -188,19 +193,24 @@ shared [ReadCallback, SocketExceptionHandler]? makeDaemonizeProgramInstance(
                 "Program can only be launched once"
                 assert (!launched);
                 launched = true;
+                log.trace("setting up program launch");
                 variable value args = arguments.sequence();
                 if (exists wd = workingDirectory) {
                     args = argumentsMap(args, wd);
                 }
                 setProcessArguments(args);
+                log.trace("set process arguments");
                 trapProcessExit {
                     void trap(Integer exitCode) {
                         throw ProcessExit(exitCode);
                     }
                 };
+                log.trace("trapped process.exit()");
                 setStandardInput(standardInput);
+                log.trace("set standard input");
                 setStandardOutput(standardOutput, maximumStandardOutput);
                 setStandardError(standardError, maximumStandardError);
+                log.trace("set standard output and error");
                 void writeStreams() {
                     standardOutput.flip();
                     write(standardOutput, #81, noop);
@@ -208,19 +218,25 @@ shared [ReadCallback, SocketExceptionHandler]? makeDaemonizeProgramInstance(
                     write(standardError, #82, noop);
                 }
                 try {
+                    log.info("launching program with program.arguments = [``", ".join(args.map((a) => "\"``a``\""))``], workingDirectory = `` workingDirectory else "<null>" ``, and ``standardInput.available`` bytes of standard input");
                     run();
+                    log.info("program returned normally");
                     writeStreams();
                     write(intToBuffer(0, 8), #80, close);
                 } catch (ProcessExit pe) {
+                    log.info("program terminated with ``pe.message``");
                     writeStreams();
                     write(intToBuffer(pe.exitCode, 8), #80, close);
                 } catch (StandardOutputExceeded e) {
+                    log.error("standard output limit (``e.limit``) exceeded");
                     write(intToBuffer(e.limit, 8), #91, noop);
                     write(intToBuffer(#100000001, 8), #80, close);
                 } catch (StandardErrorExceeded e) {
+                    log.error("standard error limit (``e.limit``) exceeded");
                     write(intToBuffer(e.limit, 8), #92, noop);
                     write(intToBuffer(#100000002, 8), #80, close);
                 } catch (Throwable t) {
+                    log.error("program terminated with unknown Throwable", t);
                     writeStreams();
                     StringBuilder stackTrace = StringBuilder();
                     printStackTrace(t, stackTrace.append);
