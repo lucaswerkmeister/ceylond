@@ -13,6 +13,9 @@ void grow(ByteBuffer buffer, Integer size, Integer? limit, Throwable(Integer) on
         if (exists limit, needed > limit) {
             throw onLimitExceeded(limit);
         }
+        if (cap == 0) {
+            cap = 1; // doubling 0 won’t get us very far
+        }
         while (cap < needed) {
             cap *= 2;
         }
