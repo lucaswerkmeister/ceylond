@@ -207,10 +207,10 @@ shared [ReadCallback, SocketExceptionHandler]? makeDaemonizeProgramInstance(
                 };
                 log.trace("trapped process.exit()");
                 standardInput.flip();
-                setStandardInput(standardInput);
+                value resetStdin = setStandardInput(standardInput);
                 log.trace("set standard input");
-                setStandardOutput(standardOutput, maximumStandardOutput);
-                setStandardError(standardError, maximumStandardError);
+                value resetStdout = setStandardOutput(standardOutput, maximumStandardOutput);
+                value resetStderr = setStandardError(standardError, maximumStandardError);
                 log.trace("set standard output and error");
                 void writeStreams() {
                     standardOutput.flip();
@@ -218,26 +218,36 @@ shared [ReadCallback, SocketExceptionHandler]? makeDaemonizeProgramInstance(
                     standardError.flip();
                     write(standardError, #82, noop);
                 }
+                void resetStreams() {
+                    resetStdin();
+                    resetStdout();
+                    resetStderr();
+                }
                 try {
                     log.info("launching program with program.arguments = [``", ".join(args.map((a) => "\"``a``\""))``], workingDirectory = `` workingDirectory else "<null>" ``, and ``standardInput.available`` bytes of standard input");
                     run();
                     log.info("program returned normally");
+                    resetStreams();
                     writeStreams();
                     write(intToBuffer(0, 8), #80, close);
                 } catch (ProcessExit pe) {
                     log.info("program terminated with ``pe.message``");
+                    resetStreams();
                     writeStreams();
                     write(intToBuffer(pe.exitCode, 8), #80, close);
                 } catch (StandardOutputExceeded e) {
                     log.error("standard output limit (``e.limit``) exceeded");
+                    resetStreams();
                     write(intToBuffer(e.limit, 8), #91, noop);
                     write(intToBuffer(#100000001, 8), #80, close);
                 } catch (StandardErrorExceeded e) {
                     log.error("standard error limit (``e.limit``) exceeded");
+                    resetStreams();
                     write(intToBuffer(e.limit, 8), #92, noop);
                     write(intToBuffer(#100000002, 8), #80, close);
                 } catch (Throwable t) {
                     log.error("program terminated with unknown Throwable", t);
+                    resetStreams();
                     writeStreams();
                     StringBuilder stackTrace = StringBuilder();
                     printStackTrace(t, stackTrace.append);
