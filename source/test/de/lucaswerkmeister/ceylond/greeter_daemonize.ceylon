@@ -12,9 +12,9 @@ shared void greeter_daemonize() {
     daemonizeProgram {
         void run() {
             print("Hello, World! Please supply your name.");
-            /*assert (exists name = process.readLine());
-                print("Greetings, ``name``!`");
-                print("Goodbye.");*/
+            assert (exists name = process.readLine());
+            print("Greetings, ``name``!");
+            print("Goodbye.");
         }
         fd = 0;
     };
