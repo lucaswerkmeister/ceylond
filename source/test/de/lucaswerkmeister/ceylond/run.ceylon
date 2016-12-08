@@ -8,9 +8,11 @@ import ceylon.logging {
 }
 
 shared void run() {
-    addLogWriter(writeSystemdLog);
+    if (!"--noDefaultLogWriter" in process.arguments) {
+        addLogWriter(writeSystemdLog);
+    }
     defaultPriority = trace;
-    assert (exists funName = process.arguments.first,
+    assert (exists funName = process.arguments.filter((s) => !s.startsWith("-")).first,
         exists fun = `package`.getFunction(funName));
     fun.invoke();
 }
