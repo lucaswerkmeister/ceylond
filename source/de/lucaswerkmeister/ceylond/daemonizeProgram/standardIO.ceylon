@@ -5,7 +5,8 @@ import ceylon.buffer.charset {
     utf8
 }
 import ceylon.interop.java {
-    javaByteArray
+    javaByteArray,
+    javaClassFromInstance
 }
 import java.lang {
     System
@@ -45,6 +46,9 @@ native void setStandardError(ByteBuffer standardError, Integer? limit);
 
 native ("jvm") void setStandardInput(ByteBuffer standardInput) {
     System.setIn(ByteArrayInputStream(javaByteArray(standardInput.array), 0, standardInput.available));
+    value stdinReaderField = javaClassFromInstance(process).getDeclaredField("stdinReader");
+    stdinReaderField.accessible = true;
+    stdinReaderField.set(process, null);
 }
 native ("jvm") void setStandardOutput(ByteBuffer standardOutput, Integer? limit) {
     System.setOut(PrintStream(object extends OutputStream() {
