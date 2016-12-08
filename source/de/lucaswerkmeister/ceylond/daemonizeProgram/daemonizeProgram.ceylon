@@ -206,6 +206,7 @@ shared [ReadCallback, SocketExceptionHandler]? makeDaemonizeProgramInstance(
                     }
                 };
                 log.trace("trapped process.exit()");
+                standardInput.flip();
                 setStandardInput(standardInput);
                 log.trace("set standard input");
                 setStandardOutput(standardOutput, maximumStandardOutput);
