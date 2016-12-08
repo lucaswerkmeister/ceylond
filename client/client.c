@@ -102,6 +102,24 @@ int main(int argc, char *argv[]) {
   written = write(sock, cwd, len);
   if (written < len) error(EXIT_FAILURE, errno, "write(cwd)");
   free(cwd);
+#ifdef STDIN
+  // standard input
+#ifndef STDIN_BUF_SIZE
+#define STDIN_BUF_SIZE 4096
+#elif STDIN_BUF_SIZE < 1
+#error "STDIN_BUF_SIZE must be strictly positive if defined"
+#endif
+  char stdin[STDIN_BUF_SIZE];
+  while ((len = read(0, stdin, STDIN_BUF_SIZE)) > 0) {
+    written = write(sock, length2buf((uint64_t)len), LENGTH_SIZE);
+    if (written < LENGTH_SIZE) error(EXIT_FAILURE, errno, "write(len/*stdin*/)", argi);
+    written = write(sock, type2buf(TYPE_STDIN), TYPE_SIZE);
+    if (written < TYPE_SIZE) error(EXIT_FAILURE, errno, "write(TYPE_STDIN)", argi);
+    written = write(sock, stdin, len);
+    if (written < len) error(EXIT_FAILURE, errno, "write(stdin)", argi);
+  }
+  if (len < 0) error(EXIT_FAILURE, errno, "read(stdin)");
+#endif
   // launch
   written = write(sock, length2buf((uint64_t)0), LENGTH_SIZE);
   if (written < LENGTH_SIZE) error(EXIT_FAILURE, errno, "write(0/*launch*/)");
