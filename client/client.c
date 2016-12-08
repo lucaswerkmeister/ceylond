@@ -122,11 +122,7 @@ int main(int argc, char *argv[]) {
     type = buf2type(typeBuf);
     errno = 0;
     uint8_t *content = malloc(length);
-    if (content == NULL && length > 0) {
-      for (int i = 0; i < LENGTH_SIZE; i++)
-        printf("lengthBuf[%d] = %02x\n", i, lengthBuf[i]);
-      error(EXIT_FAILURE, errno, "malloc(length = %" PRIu64 ")", length);
-    }
+    if (content == NULL && length > 0) error(EXIT_FAILURE, errno, "malloc(length = %" PRIu64 ")", length);
     errno = 0;
     len = read(sock, content, length);
     if (len < length) error(EXIT_FAILURE, errno, "read(content)");
