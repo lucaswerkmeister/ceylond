@@ -64,21 +64,18 @@ ByteBuffer intToBuffer(Integer int, Integer size) {
  Afterwards, the following packet types may be sent:
 
  - `#80` (128): connection closes.
-   The content is an 8-byte integer in network byte order,
-   indicating the exit code ([[process.exit]]’s argument),
+   The content is a 4-byte integer in network byte order,
+   indicating the exit code ([[process.exit]]’s argument;
+   `process.exit` throws if called with a number that does not fit in four bytes),
    or `0` if the [[run]] function returned normally,
    or `1` if the [[run]] function threw an exception,
-   or `#100000000` (4294967296) if standard input was exceeded (see [[maximumStandardInput]]),
-   or `#100000001` (4294967297) if standard output was exceeded (see [[maximumStandardOutput]]),
-   or `#100000002` (4294967298) if standard error was exceeded (see [[maximumStandardError]]).
+   or `#7FFFFFF0` (2147483632) if standard input was exceeded (see [[maximumStandardInput]]),
+   or `#7FFFFFF1` (2147483633) if standard output was exceeded (see [[maximumStandardOutput]]),
+   or `#7FFFFFF2` (2147483634) if standard error was exceeded (see [[maximumStandardError]]).
    A packet of this type is always sent on termination
    (unless the packet-based protocol itself is violated),
    and it is always the last packet;
    the socket is closed once this packet has been sent.
-   (Note that most platforms do not support eight-byte exit codes,
-   and a client that actually exits its process
-   should take care that an exit code like `#100000000` is not truncated to `0`,
-   which would indicate success.)
  - `#81` (129): standard output.
    All standard output produced by the program via [[process.writeLine]] and similar functions
    is stored in a buffer and finally sent in a packet of this type.
@@ -95,11 +92,11 @@ ByteBuffer intToBuffer(Integer int, Integer size) {
    This packet is sent when the a received standard input packet
    bumps the total number of standard input bytes received
    above the application-configured [[limit|maximumStandardInput]].
-   It contains that limit as an eight-byte integer in network byte order.
+   It contains that limit as a 4-byte integer in network byte order.
  - `#91` (145): standard output too long.
    This packet is sent when a write to standard output by the application
    exceeds the application-configured [[limit|maximumStandardOutput]].
-   It contains that limit as an eight-byte integer in network byte order.
+   It contains that limit as a 4-byte integer in network byte order.
  - `#92` (146): standard error too long.
    Analogous to standard output too long (`#91`, see above)."
 shared [ReadCallback, SocketExceptionHandler]? makeDaemonizeProgramInstance(
@@ -179,8 +176,8 @@ shared [ReadCallback, SocketExceptionHandler]? makeDaemonizeProgramInstance(
                     grow(standardInput, content.available, maximumStandardInput, StandardInputExceeded);
                 } catch (StandardInputExceeded e) {
                     log.info("standard input limit (``e.limit``) exceeded");
-                    write(intToBuffer(e.limit, 8), #90, noop);
-                    write(intToBuffer(#100000000, 8), #80, close);
+                    write(intToBuffer(e.limit, 4), #90, noop);
+                    write(intToBuffer(#7FFFFFF0, 4), #80, close);
                 }
                 log.trace("adding ``content.available`` bytes of standard input");
                 while (content.hasAvailable) {
@@ -229,22 +226,22 @@ shared [ReadCallback, SocketExceptionHandler]? makeDaemonizeProgramInstance(
                     log.info("program returned normally");
                     resetStreams();
                     writeStreams();
-                    write(intToBuffer(0, 8), #80, close);
+                    write(intToBuffer(0, 4), #80, close);
                 } catch (ProcessExit pe) {
                     log.info("program terminated with ``pe.message``");
                     resetStreams();
                     writeStreams();
-                    write(intToBuffer(pe.exitCode, 8), #80, close);
+                    write(intToBuffer(pe.exitCode, 4), #80, close);
                 } catch (StandardOutputExceeded e) {
                     log.error("standard output limit (``e.limit``) exceeded");
                     resetStreams();
-                    write(intToBuffer(e.limit, 8), #91, noop);
-                    write(intToBuffer(#100000001, 8), #80, close);
+                    write(intToBuffer(e.limit, 4), #91, noop);
+                    write(intToBuffer(#7FFFFFF1, 4), #80, close);
                 } catch (StandardErrorExceeded e) {
                     log.error("standard error limit (``e.limit``) exceeded");
                     resetStreams();
-                    write(intToBuffer(e.limit, 8), #92, noop);
-                    write(intToBuffer(#100000002, 8), #80, close);
+                    write(intToBuffer(e.limit, 4), #92, noop);
+                    write(intToBuffer(#7FFFFFF2, 4), #80, close);
                 } catch (Throwable t) {
                     log.error("program terminated with unknown Throwable", t);
                     resetStreams();
@@ -252,7 +249,7 @@ shared [ReadCallback, SocketExceptionHandler]? makeDaemonizeProgramInstance(
                     StringBuilder stackTrace = StringBuilder();
                     printStackTrace(t, stackTrace.append);
                     write(utf8.encodeBuffer(stackTrace), #83, noop);
-                    write(intToBuffer(1, 8), #80, close);
+                    write(intToBuffer(1, 4), #80, close);
                 }
             }
 

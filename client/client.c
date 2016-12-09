@@ -166,7 +166,7 @@ int main(int argc, char *argv[]) {
       case TYPE_STDOUT_LONG: msg = "output"; break;
       case TYPE_STDERR_LONG: msg = "error"; break;
       }
-      if (length != 8) error(EXIT_FAILURE, 0, "protocol error: 'standard %s too long' message must have exactly eight bytes of content (got %" PRIu64 ")", msg, length);
+      if (length != 4) error(EXIT_FAILURE, 0, "protocol error: 'standard %s too long' message must have exactly four bytes of content (got %" PRIu64 ")", msg, length);
       uint64_t limit = buf2integer(content);
       error(EXIT_FAILURE, 0, "standard %s exceeds configured limit of #%" PRIx64 " (%" PRIu64 ") bytes", msg, limit, limit);
     }
