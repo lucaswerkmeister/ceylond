@@ -18,21 +18,31 @@ function quietly {
 }
 
 function build-jvm {
-    quietly ceylon compile de.lucaswerkmeister.ceylond.{core,recordBased,packetBased} test.de.lucaswerkmeister.ceylond || die 'JVM build error'
+    quietly ceylon compile de.lucaswerkmeister.ceylond.{core,recordBased,packetBased,daemonizeProgram} test.de.lucaswerkmeister.ceylond || die 'JVM build error'
     quietly ceylon fat-jar test.de.lucaswerkmeister.ceylond || die 'JVM jar error'
 }
 function build-js {
-    quietly ceylon compile-js de.lucaswerkmeister.ceylond.{core,recordBased,packetBased} test.de.lucaswerkmeister.ceylond || die 'JS build error'
-    quietly ceylon copy --js --with-dependencies --include-language --out node_modules de.lucaswerkmeister.ceylond.{core,recordBased,packetBased} test.de.lucaswerkmeister.ceylond || die 'JS copy error'
+    quietly ceylon compile-js de.lucaswerkmeister.ceylond.{core,recordBased,packetBased,daemonizeProgram} test.de.lucaswerkmeister.ceylond || die 'JS build error'
+    if [[ -v nocopydeps ]]; then
+        deps=()
+    else
+        deps=(--with-dependencies --include-language)
+    fi
+    quietly ceylon copy --js "${deps[@]}" --out node_modules de.lucaswerkmeister.ceylond.{core,recordBased,packetBased,daemonizeProgram} test.de.lucaswerkmeister.ceylond || die 'JS copy error'
 }
-function build { build-jvm; build-js; }
+function build {
+    for backend in ${backends:-jvm js}; do
+        "build-$backend"
+    done
+}
 
 function sock-act {
     local function="$1"
     local where="${2:-/tmp/mysocket}"
+    local options=("${@:2}")
     case $backend in
-        jvm) quietly systemd-socket-activate -E LC_ALL=en_US.UTF-8 -E LC_MESSAGES=C --listen "$where" --inetd /usr/bin/java -jar test.de.lucaswerkmeister.ceylond-1.0.0.jar "$function";;
-        js) quietly systemd-socket-activate -E LC_ALL=en_US.UTF-8 -E LC_MESSAGES=C --listen "$where" /usr/bin/node -e "require('test/de/lucaswerkmeister/ceylond/1.0.0/test.de.lucaswerkmeister.ceylond-1.0.0').run()" dummy "$function";;
+        jvm) quietly systemd-socket-activate -E LC_ALL=en_US.UTF-8 -E LC_MESSAGES=C --listen "$where" --inetd /usr/bin/java -jar test.de.lucaswerkmeister.ceylond-1.0.0.jar "$function" "${options[@]}";;
+        js) quietly systemd-socket-activate -E LC_ALL=en_US.UTF-8 -E LC_MESSAGES=C --listen "$where" /usr/bin/node -e "require('test/de/lucaswerkmeister/ceylond/1.0.0/test.de.lucaswerkmeister.ceylond-1.0.0').run()" dummy "$function" "${options[@]}";;
         *) die 'Unknown backend %s' "$backend";;
     esac
 }
@@ -101,6 +111,19 @@ function packet-based {
     fi
 }
 
+function greeter-daemonize {
+    quietly make -C client NAME=greeter_client CFLAGS=-DSTDIN || die 'greeter-daemonize: make error'
+    sock-act greeter_daemonize "" --noDefaultLogWriter & sleep 0.2s
+    local expected=$'Hello, World! Please supply your name.\nGreetings, Lucas!\nGoodbye.'
+    local actual="$(printf 'Lucas\n' | client/greeter_client 2>&1)"
+    kill %% && { wait %%; true; } 2>/dev/null || die 'greeter-daemonize: could not kill daemon' # silence job control output with {wait}2>/dev/null
+    if [[ "$expected" == "$actual" ]]; then
+        tput setaf 2; printf 'greeter-daemonize/%s: success\n' "$backend"; tput sgr0
+    else
+        die 'greeter-daemonize/%s: expected\n%q\nbut was\n%q\n' "$backend" "$expected" "$actual"
+    fi
+}
+
 function unit {
     case $backend in
         jvm) quietly ceylon test test.de.lucaswerkmeister.ceylond/1.0.0;;
@@ -112,7 +135,7 @@ function unit {
 if ! [[ -v nobuild ]]; then
     build
 fi
-for test in ${tests:-greeter-direct greeter-record record-separator http-server packet-based unit}; do
+for test in ${tests:-greeter-direct greeter-record record-separator http-server packet-based greeter-daemonize unit}; do
     for backend in ${backends:-jvm js}; do
         $test || die 'Unhandled error in %s' "$test"
     done
