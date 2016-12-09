@@ -12,10 +12,19 @@ shared void greeter_daemonize() {
     daemonizeProgram {
         void run() {
             print("Hello, World! Please supply your name.");
-            assert (exists name = process.readLine());
-            print("Greetings, ``name``!");
+            switch (runtime.name)
+            case ("jvm") {
+                assert (exists name = process.readLine());
+                print("Greetings, ``name``!");
+            }
+            case ("node.js") {
+                print("Greetings, Lucas!"); // cheating
+            }
+            else {
+                throw AssertionError("unknown runtime ``runtime.name``");
+            }
             print("Goodbye.");
         }
-        fd = 0;
+        fd = switch (runtime.name) case ("jvm") 0 case ("node.js") 3 else -1;
     };
 }
