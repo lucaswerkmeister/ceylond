@@ -52,12 +52,14 @@ native ("js") Anything(String) writeErrorLine() {
     }
     if (usesProcess) {
         dynamic {
-            dynamic psw = eval("process.stderr").write;
-            return (String line) => psw(line + operatingSystem.newline);
+            dynamic p = eval("process");
+            dynamic psw = p.stderr.write;
+            return (String line) => psw.call(p.stderr, line + operatingSystem.newline);
         }
     } else if (usesConsole) {
         dynamic {
-            return console.error;
+            dynamic ce = console.error;
+            return (String line) => ce.call(console, line);
         }
     } else {
         return noop;
