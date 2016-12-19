@@ -8,7 +8,7 @@ shared void writeInteger(Integer integer, Integer size, ByteBuffer buffer) {
     "Does not support signed integers"
     assert (integer >= 0);
     "Does not support integers longer than the runtime addressable integer size"
-    assert (0 <= 8*size <= runtime.integerAddressableSize);
+    assert (0 <= 8 * size <= runtime.integerAddressableSize);
     "Integer must fit into [[size]] bytes"
     assert (integer.rightLogicalShift(8 * size) == 0 || 8*size >= runtime.integerAddressableSize);
     "Buffer must have [[size]] bytes available"

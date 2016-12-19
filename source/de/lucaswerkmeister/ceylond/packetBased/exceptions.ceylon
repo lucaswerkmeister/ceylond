@@ -11,4 +11,4 @@ shared sealed class MaximumLengthExceededException(shared Integer maximumLength,
 
 "The type specified in the packet header is unknown to the application."
 shared sealed class UnknownTypeException(shared Integer type, shared Integer typeSize, shared Category<Integer> knownTypes)
-        extends PacketProtocolException("Unknown packet type ``type`` (0x``formatInteger(type, 16).padLeading(2*typeSize, '0')``)") {}
+        extends PacketProtocolException("Unknown packet type ``type`` (0x``formatInteger(type, 16).padLeading(2 * typeSize, '0')``)") {}

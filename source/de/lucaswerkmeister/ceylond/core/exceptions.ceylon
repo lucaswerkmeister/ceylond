@@ -64,7 +64,7 @@ shared class UnknownSocketException(Throwable? cause)
  The [[category]] argument defaults to this module;
  you probably want to use your own module instead, like this:
  
-     value handler = logAndAbort(`module`);" 
+     value handler = logAndAbort(`module`);"
 shared ServerExceptionHandler&SocketExceptionHandler logAndAbort(Category category = `module`) {
     value log = logger(category);
     return (ServerException|SocketException exception) {

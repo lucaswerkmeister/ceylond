@@ -34,11 +34,11 @@ shared [ReadCallback, SocketExceptionHandler]? makeRecordBasedInstance(
      and the read callback is only called with complete individual records."
     [ReadRecordCallback, SocketExceptionHandler]? instance(
         "Write the [[content]] to the socket.
-
+        
          If the content is a [[String]], it is taken to be a record.
          The [[record separator|recordSeparator]] is appended,
          and then the result is encoded with the [[charset]] before being sent.
-
+        
          If the content is a [[ByteBuffer]], it is written directly,
          without a record separator."
         void write(String|ByteBuffer content, WriteCallback callback),
@@ -105,7 +105,7 @@ shared [ReadCallback, SocketExceptionHandler]? makeRecordBasedInstance(
                                  (We can get all of them except the last one from the record separator
                                  because we know that up to [[separatorIndex]] they are identical to the record separator,
                                  and the loop only runs up to [[separatorIndex]].)"
-                                value readFragment = recordSeparator[startIndex:(fragmentSize-1)] + char.string;
+                                value readFragment = recordSeparator[startIndex : (fragmentSize - 1)] + char.string;
                                 "The characters from the record separator we are comparing against."
                                 value recordFragment = recordSeparator.initial(fragmentSize);
                                 "Sanity check"

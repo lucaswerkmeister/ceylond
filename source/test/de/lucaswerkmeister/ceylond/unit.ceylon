@@ -38,9 +38,9 @@ native ("jvm") [String][] nativeReadIntegerTests = [
 native ("js") [String][] nativeReadIntegerTests = [];
 
 "Test cases for [[testWriteInteger]]."
-shared [Integer,Integer][] writeIntegerTests = concatenate(generalWriteIntegerTests, nativeWriteIntegerTests);
+shared [Integer, Integer][] writeIntegerTests = concatenate(generalWriteIntegerTests, nativeWriteIntegerTests);
 "General test cases for [[testWriteInteger]] that work on all platforms"
-[Integer,Integer][] generalWriteIntegerTests = [
+[Integer, Integer][] generalWriteIntegerTests = [
     [#00, 1],
     [#00, 1],
     [#7F, 1],
@@ -51,14 +51,14 @@ shared [Integer,Integer][] writeIntegerTests = concatenate(generalWriteIntegerTe
     [#7FFFFFFF, 4]
 ];
 "Test cases for [[testWriteInteger]] that only work on the JVM because they exceed the addressable integer size on JS."
-native [Integer,Integer][] nativeWriteIntegerTests;
-native ("jvm") [Integer,Integer][] nativeWriteIntegerTests = [
+native [Integer, Integer][] nativeWriteIntegerTests;
+native ("jvm") [Integer, Integer][] nativeWriteIntegerTests = [
     [#FFFFFFFF, 4],
     [#100000000, 5],
     [#100000000, 8],
     [#7FFFFFFFFFFFFFFF, 8]
 ];
-native ("js") [Integer,Integer][] nativeWriteIntegerTests = [];
+native ("js") [Integer, Integer][] nativeWriteIntegerTests = [];
 
 test
 parameters (`value readIntegerTests`)
@@ -100,7 +100,7 @@ shared void testWriteIntegerPreconditions() {
     assertThatException(() => writeInteger(1, 0, buf)).hasType(`AssertionError`).hasMessage(mustContain("fit"));
     assertThatException(() => writeInteger(#100, 1, buf)).hasType(`AssertionError`).hasMessage(mustContain("fit"));
     assertThatException(() => writeInteger(#10000, 2, buf)).hasType(`AssertionError`).hasMessage(mustContain("fit"));
-    if (runtime.integerAddressableSize > 8 * 4) {
+    if (runtime.integerAddressableSize > 8*4) {
         assertThatException(() => writeInteger(#100000000, 4, buf)).hasType(`AssertionError`).hasMessage(mustContain("fit"));
     }
 }

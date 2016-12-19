@@ -61,21 +61,21 @@ native ("jvm") Reset setStandardInput(ByteBuffer standardInput) {
 native ("jvm") Reset setStandardOutput(ByteBuffer standardOutput, Integer? limit) {
     value original = System.\iout;
     System.setOut(PrintStream(object extends OutputStream() {
-        shared actual void write(Integer byte) {
-            grow(standardOutput, 1, limit, StandardOutputExceeded);
-            standardOutput.put(byte.byte);
-        }
-    }));
+                shared actual void write(Integer byte) {
+                    grow(standardOutput, 1, limit, StandardOutputExceeded);
+                    standardOutput.put(byte.byte);
+                }
+            }));
     return () => System.setOut(original);
 }
 native ("jvm") Reset setStandardError(ByteBuffer standardError, Integer? limit) {
     value original = System.err;
     System.setErr(PrintStream(object extends OutputStream() {
-        shared actual void write(Integer byte) {
-            grow(standardError, 1, limit, StandardErrorExceeded);
-            standardError.put(byte.byte);
-        }
-    }));
+                shared actual void write(Integer byte) {
+                    grow(standardError, 1, limit, StandardErrorExceeded);
+                    standardError.put(byte.byte);
+                }
+            }));
     return () => System.setErr(original);
 }
 

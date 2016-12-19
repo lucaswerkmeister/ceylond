@@ -19,22 +19,22 @@ import de.lucaswerkmeister.ceylond.core {
  Despite the name, this need not be a [[Map]].
 
  A type map may, for exammple, be constructed with [[Array]] or [[map]]."
-shared alias TypeMap => Correspondence<Integer, ReadCallback>;
+shared alias TypeMap => Correspondence<Integer,ReadCallback>;
 
 "Create an instance for [[start]] that reads and writes packets." // TODO improve doc
 see (`function startPacketBased`)
 shared [ReadCallback, SocketExceptionHandler]? makePacketBasedInstance(
-"This function is called whenever a new connection to the socket is opened.
- It works just like [[start.instance]],
- except that [[write]] also takes a packet type
- and the read callback is not a single function, but a [[TypeMap]].
- If a packet with an unknown type (not [[defined|Correspondence.defines]] by the type map) is returned,
- an error is logged and the connection is immediately closed.
- (The exception handler returned by [[instance]] is not consulted in this case.)"
-[TypeMap, SocketExceptionHandler]? instance(
-"Write a packet with the given [[content]] and [[type]] to the socket."
-void write(ByteBuffer content, Integer type, WriteCallback callback),
-void close()),
+    "This function is called whenever a new connection to the socket is opened.
+     It works just like [[start.instance]],
+     except that [[write]] also takes a packet type
+     and the read callback is not a single function, but a [[TypeMap]].
+     If a packet with an unknown type (not [[defined|Correspondence.defines]] by the type map) is returned,
+     an error is logged and the connection is immediately closed.
+     (The exception handler returned by [[instance]] is not consulted in this case.)"
+    [TypeMap, SocketExceptionHandler]? instance(
+        "Write a packet with the given [[content]] and [[type]] to the socket."
+        void write(ByteBuffer content, Integer type, WriteCallback callback),
+        void close()),
     "The size of the packet length in bytes."
     Integer lengthSize = 4,
     "The size of the packet type in bytes.
@@ -52,9 +52,9 @@ void close()),
     "Type cannot be negative bytes long"
     assert (typeSize >= 0);
     "Lengths above 8 cannot be processed"
-    assert (lengthSize <= 8 && typeSize <= 8);
+    assert (lengthSize<=8 && typeSize<=8);
     "Maximum length must be positive and must not exceed highest possible value expressible in lengthSize bytes"
-    assert (0 < maximumLength < 256^lengthSize);
+    assert (0 < maximumLength < 256 ^ lengthSize);
     value log = logger(`module`); // TODO remove?
     value inst = instance {
         void write(ByteBuffer content, Integer type, WriteCallback callback) {
@@ -178,28 +178,28 @@ void close()),
        };"""
 see (`function start`, `function makePacketBasedInstance`)
 shared void startPacketBased(
-"See [[makePacketBasedInstance.instance]]."
-[TypeMap, SocketExceptionHandler]? instance(void write(ByteBuffer content, Integer type, WriteCallback callback), void close()),
-"See [[start.fd]]."
-Integer fd,
-"See [[start.handler]]."
-ServerExceptionHandler handler = logAndAbort(),
-"See [[start.concurrent]]."
-Boolean concurrent = true,
-"See [[makePacketBasedInstance.lengthSize]]."
+    "See [[makePacketBasedInstance.instance]]."
+    [TypeMap, SocketExceptionHandler]? instance(void write(ByteBuffer content, Integer type, WriteCallback callback), void close()),
+    "See [[start.fd]]."
+    Integer fd,
+    "See [[start.handler]]."
+    ServerExceptionHandler handler = logAndAbort(),
+    "See [[start.concurrent]]."
+    Boolean concurrent = true,
+    "See [[makePacketBasedInstance.lengthSize]]."
     Integer lengthSize = 4,
     "See [[makePacketBasedInstance.typeSize]]."
     Integer typeSize = 4,
     "See [[makePacketBasedInstance.maximumLength."
     Integer maximumLength = 256^lengthSize - 1)
         => start {
-    instance = makePacketBasedInstance {
-        instance = instance;
-        lengthSize = lengthSize;
-        typeSize = typeSize;
-        maximumLength = maximumLength;
-    };
-    fd = fd;
-    handler = handler;
-    concurrent = concurrent;
-};
+            instance = makePacketBasedInstance {
+                instance = instance;
+                lengthSize = lengthSize;
+                typeSize = typeSize;
+                maximumLength = maximumLength;
+            };
+            fd = fd;
+            handler = handler;
+            concurrent = concurrent;
+        };

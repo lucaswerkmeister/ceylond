@@ -167,7 +167,7 @@ shared [ReadCallback, SocketExceptionHandler]? makeDaemonizeProgramInstance(
                 "Program must not be launched yet"
                 assert (!launched);
                 workingDirectory = utf8.decode(content);
-                log.trace("set working directory to ``workingDirectory else ""``");
+                log.trace("set working directory to `` workingDirectory else "" ``");
             }
             void readStandardInput(ByteBuffer content) {
                 "Program must not be launched yet"
@@ -252,7 +252,7 @@ shared [ReadCallback, SocketExceptionHandler]? makeDaemonizeProgramInstance(
                     write(intToBuffer(1, 4), #80, close);
                 }
             }
-
+            
             value typeMap = map {
                 #00->launch,
                 #01->readArgument,

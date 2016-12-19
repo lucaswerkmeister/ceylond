@@ -21,7 +21,9 @@ import java.lang {
     JInteger=Integer {
         intType=TYPE
     },
-    System { inheritedChannel },
+    System {
+        inheritedChannel
+    },
     Thread
 }
 import java.io {
@@ -102,7 +104,7 @@ native ("jvm") class Connection(Selector selector, SocketChannel socket) {
     Queue<JByteBuffer->WriteCallback> writes = LinkedList<JByteBuffer->WriteCallback>();
     late ReadCallback read;
     late SocketExceptionHandler handler;
-
+    
     Boolean onError(SocketException|IOException error) {
         SocketException se;
         switch (error)
@@ -124,10 +126,10 @@ native ("jvm") class Connection(Selector selector, SocketChannel socket) {
         }
         return true;
     }
-
+    
     "Read data from the socket and pass it to the [[read]] callback.
      Call this method when the socket has been signalled to be ready for reading.
-
+    
      The return value indicates whether the socket is still valid;
      [[false]] means that the socket is or has been closed,
      and that the main loop, if not concurrent,
@@ -156,7 +158,7 @@ native ("jvm") class Connection(Selector selector, SocketChannel socket) {
     }
     "Take a queued write (if there is one) and write it to the socket.
      Call this method when the socket has been signalled to be ready for writing.
-
+    
      The return value indicates whether the socket is still valid;
      [[false]] means that the socket is or has been closed,
      and that the main loop, if not concurrent,
@@ -194,7 +196,7 @@ native ("jvm") class Connection(Selector selector, SocketChannel socket) {
      and the [[callback]] will be called once the write is complete."
     shared void write(ByteBuffer content, WriteCallback callback) {
         log.trace("enqueue write job");
-        writes.offer(bytebuffer_c2j(content)->callback);
+        writes.offer(bytebuffer_c2j(content) -> callback);
     }
     shared void setReadCallback(ReadCallback read) {
         this.read = read;
@@ -330,15 +332,15 @@ native ("jvm") shared void start([ReadCallback, SocketExceptionHandler]? instanc
         } else {
             throw FileDescriptorInvalidException("0 or >= 3", fd);
         }
-
+        
         server.configureBlocking(false);
         log.trace("made server non-blocking");
-
+        
         value selector = Selector.open();
         log.trace("got selector");
         variable value serverRegistration = server.register(selector, op_accept);
         log.trace("registered selector");
-
+        
         object extends Thread() {
             shared actual void run() {
                 log.trace("thread started");
@@ -405,9 +407,7 @@ native ("jvm") shared void start([ReadCallback, SocketExceptionHandler]? instanc
         }.start();
         log.trace("launched thread");
     } catch (Throwable t) {
-        ServerException se;
-        if (is ServerException t) { se = t; }
-        else { se = UnknownServerException(t); }
+        ServerException se = if (is ServerException t) then t else UnknownServerException(t);
         if (handler(se)) {
             log.warn("server exception handler requests continue but server cannot continue");
         }
@@ -490,15 +490,15 @@ native ("js") shared void start([ReadCallback, SocketExceptionHandler]? instance
                     });
                 log.trace("registered socket error handler");
                 socket.on("close", () {
-                    if (!closedByDaemon) {
-                        value proceed = error(SocketClosedException());
-                        socket.end();
-                        if (proceed) {
-                            log.warn("socket excepton handler requests continue but socket is closed");
+                        if (!closedByDaemon) {
+                            value proceed = error(SocketClosedException());
+                            socket.end();
+                            if (proceed) {
+                                log.warn("socket excepton handler requests continue but socket is closed");
+                            }
                         }
-                    }
-                    onClose();
-                });
+                        onClose();
+                    });
                 return true;
             } else {
                 log.trace("don’t have an instance");
@@ -510,7 +510,7 @@ native ("js") shared void start([ReadCallback, SocketExceptionHandler]? instance
             dynamic server = net.createServer();
             void onConnection(Socket socket) {
                 try {
-                    Boolean keepListening = startInstance(socket,  () {
+                    Boolean keepListening = startInstance(socket, () {
                             if (!concurrent) {
                                 server.once("connection", onConnection);
                                 log.trace("reregistered server selector");
@@ -540,13 +540,11 @@ native ("js") shared void start([ReadCallback, SocketExceptionHandler]? instance
                     }
                 });
             log.trace("registered server error handler");
-            server.listen(dynamic [fd = fd;]);
+            server.listen(dynamic [ fd = fd; ]);
         }
         log.trace("started without crash");
     } catch (Throwable t) {
-        ServerException se;
-        if (is ServerException t) { se = t; }
-        else { se = UnknownServerException(t); }
+        ServerException se = if (is ServerException t) then t else UnknownServerException(t);
         if (handler(se)) {
             log.warn("server exception handler requests continue but server cannot continue");
         }

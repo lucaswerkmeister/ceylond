@@ -26,14 +26,14 @@ shared Anything(Priority, Category, String, Throwable?) writeSystemdLog() {
         writeErrorLine(sd_level + message);
         if (exists throwable) {
             printStackTrace(throwable, (String string) {
-                value message = string.trimTrailing("\r\n".contains);
-                if (message.empty) {
-                    return;
-                }
-                for (line in message.lines) {
-                    writeErrorLine(sd_level + line);
-                }
-            });
+                    value message = string.trimTrailing("\r\n".contains);
+                    if (message.empty) {
+                        return;
+                    }
+                    for (line in message.lines) {
+                        writeErrorLine(sd_level + line);
+                    }
+                });
         }
     };
 }
