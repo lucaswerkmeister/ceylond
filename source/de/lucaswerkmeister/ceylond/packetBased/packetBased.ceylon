@@ -21,7 +21,12 @@ import de.lucaswerkmeister.ceylond.core {
  A type map may, for exammple, be constructed with [[Array]] or [[map]]."
 shared alias TypeMap => Correspondence<Integer,ReadCallback>;
 
-"Create an instance for [[start]] that reads and writes packets." // TODO improve doc
+"Create an instance for [[start]] that reads and writes packets.
+
+ A packet consists of
+ [[lengthSize]] bytes of *length* (in network byte order),
+ [[typeSize]] bytes of *type* (in network byte order),
+ and then *length* bytes of packet content.."
 see (`function startPacketBased`)
 shared [ReadCallback, SocketExceptionHandler]? makePacketBasedInstance(
     "This function is called whenever a new connection to the socket is opened.
@@ -51,11 +56,7 @@ shared [ReadCallback, SocketExceptionHandler]? makePacketBasedInstance(
     assert (lengthSize > 0);
     "Type cannot be negative bytes long"
     assert (typeSize >= 0);
-    "Lengths above 8 cannot be processed"
-    assert (lengthSize<=8 && typeSize<=8);
-    "Maximum length must be positive and must not exceed highest possible value expressible in lengthSize bytes"
-    assert (0 < maximumLength < 256 ^ lengthSize);
-    value log = logger(`module`); // TODO remove?
+    value log = logger(`module`);
     value inst = instance {
         void write(ByteBuffer content, Integer type, WriteCallback callback) {
             Integer length = content.available;
@@ -76,6 +77,16 @@ shared [ReadCallback, SocketExceptionHandler]? makePacketBasedInstance(
         ByteBuffer lengthBuffer = ByteBuffer.ofSize(lengthSize);
         "Constant buffer for the packet type."
         ByteBuffer typeBuffer = ByteBuffer.ofSize(typeSize);
+        // sanity check lengthSize and typeSize:
+        // reuse assertions in numberIO
+        writeInteger(maximumLength, lengthSize, lengthBuffer);
+        lengthBuffer.flip();
+        assert (readInteger(lengthBuffer) == maximumLength);
+        lengthBuffer.clear();
+        writeInteger(0, typeSize, typeBuffer);
+        typeBuffer.flip();
+        assert (readInteger(typeBuffer) == 0);
+        typeBuffer.clear();
         "Variable buffer for the actual packet contents,
          allocated each time the [[length|lengthBuffer]] has been read.
          [[null]] means that a new buffer must be allocated –
