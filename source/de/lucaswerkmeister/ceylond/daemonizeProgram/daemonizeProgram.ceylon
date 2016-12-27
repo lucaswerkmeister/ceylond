@@ -144,7 +144,7 @@ shared [ReadCallback, SocketExceptionHandler]? makeDaemonizeProgramInstance(
      the daemon sends “standard error exceeded” (`#92`) and “exit” (`#80`) packets
      and then closes the connection."
     Integer? maximumStandardError = null,
-    "See [[makePacketBasedInstance.maximumLength]]"
+    "See [[makePacketBasedInstance.maximumLength]]."
     Integer maximumPacketLength = 256^lengthSize - 1)(void write(ByteBuffer content, WriteCallback callback), void close()) {
     return makePacketBasedInstance {
         function instance(void write(ByteBuffer content, Integer type, WriteCallback callback), void close()) {
@@ -267,6 +267,11 @@ shared [ReadCallback, SocketExceptionHandler]? makeDaemonizeProgramInstance(
     }(write, close);
 }
 
+"Turns a normal program ([[run]]) into a daemon
+ that runs one instance of the program per connection.
+ Only one instance of the program is run at a time,
+ to avoid interference between multiple instances via global state.
+ (However, the program needs to take care of resetting such state at the beginning or end itself.)"
 shared void daemonizeProgram(
     "See [[makeDaemonizeProgramInstance.run]]."
     void run(),

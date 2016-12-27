@@ -18,7 +18,7 @@ import java.io {
 }
 
 "A function that can be called to reset a certain action."
-shared alias Reset => Anything();
+alias Reset => Anything();
 
 "Sets the standard input to the contents of the given byte buffer.
  Reading from standard input will produce the contents of this buffer and nothing else.
