@@ -112,11 +112,11 @@ int main(int argc, char *argv[]) {
   char stdin[STDIN_BUF_SIZE];
   while ((len = read(0, stdin, STDIN_BUF_SIZE)) > 0) {
     written = write(sock, length2buf((uint64_t)len), LENGTH_SIZE);
-    if (written < LENGTH_SIZE) error(EXIT_FAILURE, errno, "write(len/*stdin*/)", argi);
+    if (written < LENGTH_SIZE) error(EXIT_FAILURE, errno, "write(len/*stdin*/)");
     written = write(sock, type2buf(TYPE_STDIN), TYPE_SIZE);
-    if (written < TYPE_SIZE) error(EXIT_FAILURE, errno, "write(TYPE_STDIN)", argi);
+    if (written < TYPE_SIZE) error(EXIT_FAILURE, errno, "write(TYPE_STDIN)");
     written = write(sock, stdin, len);
-    if (written < len) error(EXIT_FAILURE, errno, "write(stdin)", argi);
+    if (written < len) error(EXIT_FAILURE, errno, "write(stdin)");
   }
   if (len < 0) error(EXIT_FAILURE, errno, "read(stdin)");
 #endif
