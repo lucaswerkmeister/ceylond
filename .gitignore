@@ -3,7 +3,7 @@
 /node_modules/
 /*.jar
 /packet-based
-/client/client
+/client/greeter_client
 
 # backup files
 *~
