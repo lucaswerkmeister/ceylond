@@ -1,3 +1,5 @@
+# Released under CC0; see LICENSE file.
+
 # copy this Makefile to your project and set the following variables:
 NAME := TODO-name-of-the-binary
 SOCKET_PATH := /TODO/path/to/socket

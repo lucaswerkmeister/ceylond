@@ -1,3 +1,5 @@
+/* Released under CC0; see LICENSE file. */
+
 #define _GNU_SOURCE
 
 #include <errno.h>
