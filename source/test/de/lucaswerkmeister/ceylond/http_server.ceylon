@@ -13,6 +13,7 @@ import ceylon.buffer.charset {
 
 shared void http_server()
         => startRecordBased {
+            recordSeparator = "\r\n";
             function instance(void write(String|ByteBuffer content, WriteCallback callback), void close()) {
                 variable String? path = null;
                 void read(String record) {
@@ -28,14 +29,15 @@ shared void http_server()
                             }
                             else {
                                 content = null;
-                                write("HTTP/1.0 404 File not found", noop);
-                                write("", close);
                             }
                             if (exists content) {
                                 write("HTTP/1.0 200 OK", noop);
                                 write("Content-type: text/plain; charset=utf-8", noop);
                                 write("", noop);
                                 write(utf8.encodeBuffer(content), close);
+                            } else {
+                                write("HTTP/1.0 404 File not found", noop);
+                                write("", close);
                             }
                         } else {
                             assert (record.split().first.endsWith(":"));
@@ -63,6 +65,5 @@ shared void http_server()
                 }
                 return [read, logAndDie(`module`)];
             }
-            recordSeparator = "\r\n";
             fd = switch (runtime.name) case ("jvm") 0 case ("node.js") 3 else -1;
         };
