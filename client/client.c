@@ -21,11 +21,11 @@
 #endif
 
 #ifndef LENGTH_SIZE
-#define LENGTH_SIZE 2
+#error "LENGTH_SIZE must be defined"
 #endif
 
 #ifndef TYPE_SIZE
-#define TYPE_SIZE 1
+#error "TYPE_SIZE must be defined"
 #endif
 
 #define TYPE_LAUNCH 0x00

@@ -112,7 +112,7 @@ function packet-based {
 }
 
 function greeter-daemonize {
-    quietly make -C client NAME=greeter_client CFLAGS=-DSTDIN || die 'greeter-daemonize: make error'
+    quietly make -C client -f Makefile-test-"${FUNCNAME[0]}" || die 'greeter-daemonize: make error'
     sock-act greeter_daemonize "" --noDefaultLogWriter & sleep 0.2s
     local expected=$'Hello, World! Please supply your name.\nGreetings, Lucas!\nGoodbye.'
     local actual="$(printf 'Lucas\n' | client/greeter_client 2>&1)"

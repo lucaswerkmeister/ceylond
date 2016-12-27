@@ -1,7 +1,12 @@
-SOCKET_PATH := /tmp/mysocket
-NAME := client
+# copy this Makefile to your project and set the following variables:
+NAME := TODO-name-of-the-binary
+SOCKET_PATH := /TODO/path/to/socket
+LENGTH_SIZE := 4 # default value of makePacketBasedInstance
+TYPE_SIZE := 4 # default value of makePacketBasedInstance
+# if your program reads standard input, uncomment this:
+# CFLAGS += -DSTDIN
 
 CFLAGS += -Wall
 
 $(NAME): client.c
-	$(CC) $(CPPFLAGS) $(CFLAGS) -DSOCKET_PATH=$(SOCKET_PATH) $^ $(LDFLAGS) $(LOADLIBES) $(LDLIBS) -o $@
+	$(CC) $(CPPFLAGS) $(CFLAGS) -DSOCKET_PATH=$(SOCKET_PATH) -DLENGTH_SIZE=$(LENGTH_SIZE) -DTYPE_SIZE=$(TYPE_SIZE) $^ $(LDFLAGS) $(LOADLIBES) $(LDLIBS) -o $@
