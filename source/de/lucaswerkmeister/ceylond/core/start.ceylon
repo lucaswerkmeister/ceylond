@@ -73,7 +73,7 @@ native ("jvm") ByteBuffer bytebuffer_j2c(JByteBuffer jbuffer) {
     return cbuffer;
 }
 native ("jvm") JByteBuffer makeReceiveBuffer() {
-    return JByteBuffer.allocate(4096); // TODO what’s a good capacity?
+    return JByteBuffer.allocate(4096);
 }
 
 "Guesses if a given [[IOException]] was thrown because a socket is closed,
