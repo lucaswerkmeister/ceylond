@@ -7,6 +7,7 @@
 #include <inttypes.h>
 #include <langinfo.h>
 #include <locale.h>
+#include <signal.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -67,6 +68,12 @@ int main(int argc, char *argv[]) {
   setlocale(LC_CTYPE, "");
   if (strcmp(nl_langinfo(CODESET), "UTF-8") != 0)
     error(EXIT_FAILURE, 0, "non-UTF-8 encoding (%s) not supported, please use an UTF-8 locale", nl_langinfo(CODESET));
+
+  // ignore SIGPIPE
+  struct sigaction sa;
+  sigemptyset(&sa.sa_mask);
+  sa.sa_handler = SIG_IGN;
+  if (sigaction(SIGPIPE, &sa, NULL) < 0) error(EXIT_FAILURE, errno, "sigaction(SIGPIPE)");
 
   int ret, sock, argi, len;
   uint64_t length, type;
