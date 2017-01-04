@@ -3,8 +3,8 @@
 # copy this Makefile to your project and set the following variables:
 NAME := TODO-name-of-the-binary
 SOCKET_PATH := /TODO/path/to/socket
-LENGTH_SIZE := 4 # default value of makePacketBasedInstance
-TYPE_SIZE := 4 # default value of makePacketBasedInstance
+LENGTH_SIZE := 2 # default value of makePacketBasedInstance
+TYPE_SIZE := 1 # default value of makePacketBasedInstance
 # if your program reads standard input, uncomment this:
 # CFLAGS += -DSTDIN
 
