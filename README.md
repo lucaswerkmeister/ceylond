@@ -145,6 +145,10 @@ the socket is then simply set up by the system (inetd, systemd, …).
   taking care of process arguments, standard I/O,
   and some other mechanisms – see the module documentation for details.
   A sample client is also provided in the `client/` subdirectory.
+  (Note that standard input, if used,
+  must be sent to the daemon before the program starts;
+  interactive dialogs or similar interfaces
+  must be emulated by the client.)
 
 ## License
 

@@ -17,6 +17,7 @@
 
  The following mechanisms are trapped/replaced and may be used by the program:
  - standard input, output and error
+   (but note that all standard input must be provided before the program starts)
  - [[process.exit]]
  - [[process.arguments]], including named arguments
  - uncaught exceptions from the `run` function
