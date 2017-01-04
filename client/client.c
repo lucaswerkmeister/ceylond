@@ -185,4 +185,5 @@ int main(int argc, char *argv[]) {
   } while (type != TYPE_CLOSE);
 
   close(sock);
+  return 0;
 }
