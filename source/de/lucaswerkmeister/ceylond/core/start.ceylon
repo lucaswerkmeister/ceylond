@@ -179,6 +179,10 @@ native ("jvm") class Connection(Selector selector, SocketChannel socket) {
             if (bytesAfterWrite <= 0) {
                 log.trace("write was full");
                 writes.accept();
+                if (!writes.front exists) {
+                    // queue changed from nonempty to empty, we don’t want to write to the socket anymore
+                    socket.register(selector, op_read, this);
+                }
                 try {
                     callback();
                 } catch (Throwable t) {
@@ -196,6 +200,10 @@ native ("jvm") class Connection(Selector selector, SocketChannel socket) {
      and the [[callback]] will be called once the write is complete."
     shared void write(ByteBuffer content, WriteCallback callback) {
         log.trace("enqueue write job");
+        if (!writes.front exists) {
+            // queue changes from empty to nonempty, we want to write to the socket again
+            socket.register(selector, op_read.or(op_write), this);
+        }
         writes.offer(bytebuffer_c2j(content) -> callback);
     }
     shared void setReadCallback(ReadCallback read) {
@@ -357,7 +365,7 @@ native ("jvm") shared void start([ReadCallback, SocketExceptionHandler]? instanc
                                 }
                                 socket.configureBlocking(false);
                                 value connection = Connection(selector, socket);
-                                socket.register(selector, op_read.or(op_write), connection);
+                                socket.register(selector, op_read, connection);
                                 value inst = instance {
                                     write = connection.write;
                                     void close() {
