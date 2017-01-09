@@ -94,6 +94,9 @@ shared [ReadCallback, SocketExceptionHandler]? makePacketBasedInstance(
          or because a full packet was written out."
         variable ByteBuffer? contentBuffer = null;
         void readPacket(ByteBuffer content) {
+            log.trace("got ``content.available`` bytes from socket");
+            log.trace("length buffer has ``lengthBuffer.available`` bytes available");
+            log.trace("type buffer has ``typeBuffer.available`` bytes available");
             while (lengthBuffer.hasAvailable && content.hasAvailable) {
                 lengthBuffer.put(content.get());
             }
@@ -107,7 +110,9 @@ shared [ReadCallback, SocketExceptionHandler]? makePacketBasedInstance(
                 if (!lengthBuffer.hasAvailable) {
                     lengthBuffer.flip();
                     value length = readInteger(lengthBuffer);
-                    lengthBuffer.clear();
+                    "[[lengthBuffer]] must have 0 bytes available here,
+                     otherwise next readPacket call might fill it too early"
+                    assert (lengthBuffer.available == 0);
                     if (length > maximumLength) {
                         throw MaximumLengthExceededException {
                             maximumLength = maximumLength;
@@ -133,9 +138,10 @@ shared [ReadCallback, SocketExceptionHandler]? makePacketBasedInstance(
                 typeBuffer.flip();
                 value type = readInteger(typeBuffer);
                 typeBuffer.clear();
+                lengthBuffer.clear();
                 contentBuffer = null;
                 if (exists read = readCorrespondence[type]) {
-                    log.trace("read packet of length ``contBuf.capacity``, type ``type``");
+                    log.trace("read packet of length ``contBuf.capacity``, type ``type``; ``content.available`` bytes from socket remaining");
                     contBuf.flip();
                     read(contBuf);
                 } else {
