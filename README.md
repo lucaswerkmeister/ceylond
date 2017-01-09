@@ -81,7 +81,7 @@ it is inherited by new child processes.
 It is thus possible to set up a socket in a parent program
 and the pass it to a potentially less privileged child program,
 which then accepts connections on the socket and handles then.
-In this pattern, the parent program is called a *superserver*.
+In this pattern, the parent program is called a *super-server*.
 The pattern was first popularized by the *inetd* daemon
 (a modern derivative that may still be found in many GNU/Linux distributions is *xinetd*),
 but is today also employed by *systemd*
