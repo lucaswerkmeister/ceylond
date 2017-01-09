@@ -139,11 +139,15 @@ function cat-daemonize {
 }
 
 function unit {
-    case $backend in
-        jvm) quietly ceylon test test.de.lucaswerkmeister.ceylond/1.0.0;;
-        js) quietly ceylon test-js test.de.lucaswerkmeister.ceylond/1.0.0;;
-        *) die 'Unknown backend %s' "$backend";;
-    esac
+    if case $backend in
+           jvm) quietly ceylon test test.de.lucaswerkmeister.ceylond/1.0.0;;
+           js) quietly ceylon test-js test.de.lucaswerkmeister.ceylond/1.0.0;;
+           *) die 'Unknown backend %s' "$backend";;
+       esac; then
+        tput setaf 2; printf 'unit/%s: success\n' "$backend"; tput sgr0
+    else
+        die 'unit/%s: failed' "$backend"
+    fi
 }
 
 if ! [[ -v nobuild ]]; then
