@@ -1,0 +1,11 @@
+# Makefile for the cat-daemonize test, based on Makefile
+NAME := cat
+SOCKET_PATH := /tmp/mysocket
+LENGTH_SIZE := 2
+TYPE_SIZE := 1
+CFLAGS += -DSTDIN
+
+CFLAGS += -Wall
+
+$(NAME): client.c
+	$(CC) $(CPPFLAGS) $(CFLAGS) -DSOCKET_PATH=$(SOCKET_PATH) -DLENGTH_SIZE=$(LENGTH_SIZE) -DTYPE_SIZE=$(TYPE_SIZE) $^ $(LDFLAGS) $(LOADLIBES) $(LDLIBS) -o $@

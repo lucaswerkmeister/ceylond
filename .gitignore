@@ -4,6 +4,7 @@
 /*.jar
 /packet-based
 /client/greeter_client
+/client/cat
 
 # backup files
 *~

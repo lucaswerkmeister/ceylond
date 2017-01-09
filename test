@@ -124,6 +124,20 @@ function greeter-daemonize {
     fi
 }
 
+function cat-daemonize {
+    [[ "$backend" == jvm ]] || return 0
+    quietly make -C client -f Makefile-test-"${FUNCNAME[0]}" || die 'cat-daemonize: make error'
+    sock-act cat_daemonize "" --noDefaultLogWriter & sleep 0.2s
+    local expected="$(printf '%*s' 4097)"
+    local actual="$(printf '%s' "$expected" | client/cat 2>&1)"
+    kill %% && { wait %%; true; } 2>/dev/null || die 'cat-daemonize: could not kill daemon' # silence job control output with {wait}2>/dev/null
+    if [[ "$expected" == "$actual" ]]; then
+        tput setaf 2; printf 'cat-daemonize/%s: success\n' "$backend"; tput sgr0
+    else
+        die 'cat-daemonize/%s: expected\n%q\nbut was\n%q\n' "$backend" "$expected" "$actual"
+    fi
+}
+
 function unit {
     case $backend in
         jvm) quietly ceylon test test.de.lucaswerkmeister.ceylond/1.0.0;;
@@ -135,7 +149,7 @@ function unit {
 if ! [[ -v nobuild ]]; then
     build
 fi
-for test in ${tests:-greeter-direct greeter-record record-separator http-server packet-based greeter-daemonize unit}; do
+for test in ${tests:-greeter-direct greeter-record record-separator http-server packet-based greeter-daemonize cat-daemonize unit}; do
     for backend in ${backends:-jvm js}; do
         $test || die 'Unhandled error in %s' "$test"
     done
