@@ -1,0 +1,231 @@
+<project name="ceylond" basedir="." default="test">
+
+  <property file="build.properties" />
+  <property name="ceylon.verbosity" value="false"/>
+  <property name="ceylon.executable" value="${dist.bin.dir}/ceylon"/>
+  <property name="out.repo" location="modules"/>
+
+  <!-- Local repository -->
+  <property name="ceylon.repo.dir" location="${user.home}/.ceylon/repo" />
+
+  <path id="ant-tasks">
+    <pathelement location="${dist.libs.dir}/ceylon-ant.jar"/>
+  </path>
+
+  <typedef resource="com/redhat/ceylon/ant/antlib.xml" classpathref="ant-tasks"/>
+
+  <moduleset id="modules.source.ceylon">
+    <!-- no pure Ceylon modules -->
+  </moduleset>
+  <moduleset id="modules.source.jvm">
+    <moduleset refid="modules.source.ceylon"/>
+    <module name="de.lucaswerkmeister.ceylond.core"/>
+    <module name="de.lucaswerkmeister.ceylond.recordBased"/>
+    <module name="de.lucaswerkmeister.ceylond.packetBased"/>
+    <module name="de.lucaswerkmeister.ceylond.daemonizeProgram"/>
+  </moduleset>
+  <moduleset id="modules.source.js">
+    <moduleset refid="modules.source.ceylon"/>
+    <module name="de.lucaswerkmeister.ceylond.core"/>
+    <module name="de.lucaswerkmeister.ceylond.recordBased"/>
+    <module name="de.lucaswerkmeister.ceylond.packetBased"/>
+    <module name="de.lucaswerkmeister.ceylond.daemonizeProgram"/>
+  </moduleset>
+  <moduleset id="modules.source.all">
+    <moduleset refid="modules.source.jvm"/>
+    <moduleset refid="modules.source.js"/>
+  </moduleset>
+
+  <moduleset id="modules.test.ceylon">
+    <!-- no pure Ceylon test modules -->
+  </moduleset>
+  <moduleset id="modules.test.jvm">
+    <moduleset refid="modules.test.ceylon"/>
+    <module name="test.de.lucaswerkmeister.ceylond"/>
+  </moduleset>
+  <moduleset id="modules.test.js">
+    <moduleset refid="modules.test.ceylon"/>
+    <module name="test.de.lucaswerkmeister.ceylond"/>
+  </moduleset>
+
+  <moduleset id="modules.all.ceylon">
+    <moduleset refid="modules.source.ceylon"/>
+    <moduleset refid="modules.test.ceylon"/>
+  </moduleset>
+  <moduleset id="modules.all.jvm">
+    <moduleset refid="modules.source.jvm"/>
+    <moduleset refid="modules.test.jvm"/>
+  </moduleset>
+  <moduleset id="modules.all.js">
+    <moduleset refid="modules.source.js"/>
+    <moduleset refid="modules.test.js"/>
+  </moduleset>
+
+  <target name="clean"
+          description="Deletes the modules directory">
+    <delete dir="${out.repo}"/>
+  </target>
+
+  <target name="compile-source-jvm"
+          description="Compiles the ceylond modules for the JVM backend">
+    <ceylon-compile executable="${ceylon.executable}"
+                    verbose="${ceylon.verbosity}"
+                    encoding="UTF-8"
+                    out="${out.repo}"
+                    pack200="true">
+      <moduleset refid="modules.source.jvm"/>
+    </ceylon-compile>
+  </target>
+
+  <target name="compile-source-js"
+          description="Compiles the ceylond modules for the JS backend">
+    <ceylon-compile-js executable="${ceylon.executable}"
+                       verbose="${ceylon.verbosity}"
+                       encoding="UTF-8"
+                       out="${out.repo}">
+      <moduleset refid="modules.source.js"/>
+    </ceylon-compile-js>
+  </target>
+
+  <target name="compile-test-jvm" depends="compile-source-jvm"
+          description="Compiles the ceylond test module for the JVM backend">
+    <ceylon-compile executable="${ceylon.executable}"
+                    verbose="${ceylon.verbosity}"
+                    encoding="UTF-8"
+                    out="${out.repo}"
+                    pack200="true">
+      <moduleset refid="modules.test.jvm"/>
+    </ceylon-compile>
+  </target>
+
+  <target name="compile-test-js" depends="compile-source-js"
+          description="Compiles the ceylond test modules for the JS backend">
+    <ceylon-compile-js executable="${ceylon.executable}"
+                       verbose="${ceylon.verbosity}"
+                       encoding="UTF-8"
+                       out="${out.repo}">
+      <moduleset refid="modules.test.js"/>
+    </ceylon-compile-js>
+  </target>
+
+  <target name="compile-jvm"
+          description="Compiles all the ceylond modules for the JVM backend">
+    <ceylon-compile executable="${ceylon.executable}"
+                    verbose="${ceylon.verbosity}"
+                    encoding="UTF-8"
+                    out="${out.repo}"
+                    pack200="true">
+      <moduleset refid="modules.all.jvm"/>
+    </ceylon-compile>
+  </target>
+
+  <target name="compile-js"
+          description="Compiles all the ceylond modules for the JS backend">
+    <ceylon-compile-js executable="${ceylon.executable}"
+                       verbose="${ceylon.verbosity}"
+                       encoding="UTF-8"
+                       out="${out.repo}">
+      <moduleset refid="modules.all.js"/>
+    </ceylon-compile-js>
+  </target>
+
+  <target name="compile" depends="compile-jvm,compile-js"
+          description="Compiles all the ceylond modules"/>
+
+  <target name="test-jvm" depends="compile-jvm"
+          description="Tests ceylond on the JVM backend">
+    <exec executable="./test">
+      <env key="nobuild" value=""/> <!-- build done by ant, avoids rebuild if unnecessary -->
+      <env key="backends" value="jvm"/>
+    </exec>
+  </target>
+
+  <target name="test-js" depends="compile-js"
+          description="Tests ceylond on the JS backend">
+    <exec executable="./test">
+      <env key="nobuild" value=""/> <!-- build done by ant, avoids rebuild if unnecessary -->
+      <env key="backends" value="js"/>
+    </exec>
+  </target>
+
+  <target name="test" depends="compile-jvm,compile-js"
+          description="Tests ceylond">
+    <exec executable="./test">
+      <env key="nobuild" value=""/> <!-- build done by ant, avoids rebuild if unnecessary -->
+    </exec>
+  </target>
+
+  <target name="doc"
+          description="Documents the ceylond modules">
+    <ceylon-doc executable="${ceylon.executable}"
+                includesourcecode="true"
+                nomtimecheck="true"
+                encoding="UTF-8">
+      <moduleset refid="modules.source.all"/>
+      <linkset>
+        <link pattern="ceylon" url="https://modules.ceylon-lang.org/repo/1/"/>
+      </linkset>
+    </ceylon-doc>
+
+  </target>
+
+  <target name="publish-jvm" depends="compile-source-jvm,doc"
+          description="Copies the ceylond modules for the JVM backend to the user's repository">
+    <copy todir="${ceylon.repo.dir}" overwrite="true">
+      <fileset dir="${out.repo}">
+        <include name="de/lucaswerkmeister/ceylond/**"/>
+      </fileset>
+    </copy>
+  </target>
+
+  <target name="publish-js" depends="compile-source-js,doc"
+          description="Copies the ceylond modules for the JS backend to the user's repository">
+    <copy todir="${ceylon.repo.dir}" overwrite="true">
+      <fileset dir="${out.repo}">
+        <include name="de/lucaswerkmeister/ceylond/**"/>
+      </fileset>
+    </copy>
+  </target>
+
+  <target name="publish" depends="publish-jvm,publish-js"
+          description="Copies the ceylond modules to the user's repository"/>
+
+  <target name="publish-herd">
+    <fail message="Please specify a target Herd upload repo url with -Dherd.repo=..." unless="herd.repo"/>
+    <fail message="Please specify a target Herd user name with -Dherd.user=..." unless="herd.user"/>
+    <fail message="Please specify a target Herd password with -Dherd.pass=..." unless="herd.pass"/>
+
+    <ceylon-compile executable="${ceylon.executable}"
+                    verbose="${ceylon.verbosity}"
+                    out="${herd.repo}"
+                    user="${herd.user}"
+                    pass="${herd.pass}"
+                    encoding="UTF-8">
+      <moduleset refid="modules.source.jvm"/>
+    </ceylon-compile>
+
+    <ceylon-compile-js executable="${ceylon.executable}"
+                       verbose="${ceylon.verbosity}"
+                       out="${herd.repo}"
+                       user="${herd.user}"
+                       pass="${herd.pass}"
+                       encoding="UTF-8">
+      <moduleset refid="modules.source.js"/>
+    </ceylon-compile-js>
+
+    <ceylon-doc executable="${ceylon.executable}"
+                includesourcecode="true"
+                nomtimecheck="true"
+                out="${herd.repo}"
+                user="${herd.user}"
+                pass="${herd.pass}"
+                encoding="UTF-8">
+      <moduleset refid="modules.source.all"/>
+      <linkset>
+        <link pattern="ceylon" url="https://modules.ceylon-lang.org/repo/1/"/>
+      </linkset>
+    </ceylon-doc>
+
+  </target>
+
+</project>
