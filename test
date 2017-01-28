@@ -153,7 +153,7 @@ function unit {
 if ! [[ -v nobuild ]]; then
     build
 fi
-for test in ${tests:-greeter-direct greeter-record record-separator http-server packet-based greeter-daemonize cat-daemonize unit}; do
+for test in ${tests-greeter-direct greeter-record record-separator http-server packet-based greeter-daemonize cat-daemonize unit}; do
     for backend in ${backends:-jvm js}; do
         $test || die 'Unhandled error in %s' "$test"
     done
