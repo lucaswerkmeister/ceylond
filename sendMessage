@@ -1,0 +1,24 @@
+#!/bin/bash
+
+function send-content {
+    {
+        printf 'Content-Length: %d\r\n\r\n%s' "${#1}" "$1"
+        sleep 1s
+    } | socat /tmp/mysocket - | {
+        while read -r line && [[ "$line" != $'\r' ]]; do
+            printf '%s\n' "$line"
+        done
+        printf '\r\n'
+        #jq .
+        cat
+    }
+}
+
+if (($#)); then
+    for file; do
+        printf >&2 '%s\n' "$file"
+        send-content "$(<"$file")"
+    done
+else
+    send-content "$(</dev/stdin)"
+fi

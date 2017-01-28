@@ -18,17 +18,17 @@ function quietly {
 }
 
 function build-jvm {
-    quietly ceylon compile de.lucaswerkmeister.ceylond.{core,recordBased,packetBased,daemonizeProgram} test.de.lucaswerkmeister.ceylond || die 'JVM build error'
+    quietly ceylon compile de.lucaswerkmeister.ceylond.{core,recordBased,packetBased,daemonizeProgram,languageServerProtocol} test.de.lucaswerkmeister.ceylond || die 'JVM build error'
     quietly ceylon fat-jar test.de.lucaswerkmeister.ceylond || die 'JVM jar error'
 }
 function build-js {
-    quietly ceylon compile-js de.lucaswerkmeister.ceylond.{core,recordBased,packetBased,daemonizeProgram} test.de.lucaswerkmeister.ceylond || die 'JS build error'
+    quietly ceylon compile-js de.lucaswerkmeister.ceylond.{core,recordBased,packetBased,daemonizeProgram,languageServerProtocol} test.de.lucaswerkmeister.ceylond || die 'JS build error'
     if [[ -v nocopydeps ]]; then
         deps=()
     else
         deps=(--with-dependencies --include-language)
     fi
-    quietly ceylon copy --js "${deps[@]}" --out node_modules de.lucaswerkmeister.ceylond.{core,recordBased,packetBased,daemonizeProgram} test.de.lucaswerkmeister.ceylond || die 'JS copy error'
+    quietly ceylon copy --js "${deps[@]}" --out node_modules de.lucaswerkmeister.ceylond.{core,recordBased,packetBased,daemonizeProgram,languageServerProtocol} test.de.lucaswerkmeister.ceylond || die 'JS copy error'
 }
 function build {
     for backend in ${backends:-jvm js}; do
